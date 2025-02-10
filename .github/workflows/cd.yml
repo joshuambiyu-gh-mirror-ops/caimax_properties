@@ -1,0 +1,19 @@
+name : Continuous Deployment
+on: 
+    workflow_run:
+        workflows: ["Build and Push Docker Image"]
+        types:
+            - completed
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Pull Docker Image
+        run: sudo docker pull joshuamumo/caimax_client:latest
+      - name: Delete Old Docker Container
+        run: sudo docker rm -f caimax_client || true
+      - name: Run Docker Container
+        run: sudo docker run -d --name caimax_client -p 8080:8080 joshuamumo/caimax_client:latest
+        

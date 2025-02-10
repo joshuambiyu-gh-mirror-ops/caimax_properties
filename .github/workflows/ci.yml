@@ -1,0 +1,22 @@
+name: Build and Push Docker Image
+
+on:
+  [workflow_dispatch]
+
+      
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: build image
+        run: docker build -t joshuamumo/caimax_client:latest .
+      - name: push image to docker hub
+        run: |
+         docker login -u joshuamumo -p ${{ secrets.DOCKER_HUB_TOKEN }} 
+         docker push joshuamumo/caimax_client:latest
+      

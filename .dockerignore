@@ -1,0 +1,63 @@
+Dockerfile
+README.md
+
+# Node.js dependencies
+node_modules
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build and output directories
+.next
+out
+dist
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Git and version control
+.git
+.gitignore
+
+# Editor and IDE files
+.vscode
+.idea
+*.swp
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.temp
+
+# Coverage and test reports
+coverage
+*.lcov
+jest-report.xml
+test-results.xml
+
+# Cache files
+.cache
+.pnpm-store
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Static export directory (if using `next export`)
+out
+
+# Miscellaneous
+*.bak
+*.old
