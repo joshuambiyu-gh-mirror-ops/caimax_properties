@@ -1,5 +1,5 @@
 import passport from "passport";
-import "../../../lib/passport"; // Ensure it initializes the strategy
+import "../../../lib/passport"; 
 
 export default async function handler(req, res, next) {
   passport.authenticate("google", {
