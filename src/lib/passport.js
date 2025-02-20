@@ -1,6 +1,6 @@
 import passport from "passport";
 import jwt from "jsonwebtoken";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as GoogleStrategy } from "passport-google-oauth2";
 import { db } from "@/db";
 
 passport.use(
