@@ -30,7 +30,7 @@ export default function HeaderAuth() {
   } else {
     authContent = (
       <div className="flex gap-2">
-        <form action={actions.signIn} method="post">
+        <form action={actions.signIn}>
           <Button type="submit" variant="outline">Sign In</Button>
         </form>
         <form action={actions.signIn}>
