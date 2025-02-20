@@ -24,7 +24,9 @@
 
 // const handler = NextAuth(authOptions);
 // export { handler as GET, handler as POST };
-import { handler } from '@/auth';
+// import { handler } from '@/auth';
 
-export const GET = handler;
-export const POST = handler;
+// export const GET = handler;
+// export const POST = handler;
+
+export { GET, POST } from "../../../../auth";
