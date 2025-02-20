@@ -21,7 +21,7 @@ export default function HeaderAuth() {
           </Avatar>
         </PopoverTrigger>
         <PopoverContent className="p-4">
-          <form action={actions.signOut}>
+          <form action={actions.signOut} method="post">
             <Button type="submit">Sign Out</Button>
           </form>
         </PopoverContent>
