@@ -12,7 +12,10 @@ export const metadata: Metadata = {
   title: "Caimax Properties",
   description: "Caimax Properties is a real estate listings company that brings home closer to you.",
   icons: {
-    icon: "/caimax_logo.jpg",
+    icon: [
+      { url: "/caimax_logo.jpg", type: "image/jpeg" },
+    ],
+    // icon: "/caimax_logo.jpg",
     shortcut: "/caimax_logo.jpg",
     apple: "/caimax_logo.jpg",
   },
