@@ -8,7 +8,7 @@ import Providers from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://caimax.co.ke"), // Use your actual domain
+  metadataBase: new URL("https://caimax.co.ke"), 
   title: "Caimax Properties",
   description: "Caimax Properties is a real estate listings company that brings home closer to you.",
   icons: {
