@@ -1,4 +1,5 @@
-'use client';   
+'use client';  
+import { ArrowsPointingOutIcon } from "@heroicons/react/24/solid";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "react-feather";
@@ -73,9 +74,14 @@ export default function Carousel({
 
       {/* Description */}
       <div className="bg-white border-t border-gray-300 p-4 rounded-b-lg">
-        <p className="text-gray-700 line-clamp-2">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa.
-        </p>
+        <div className="flex items-center justify-between text-gray-700 line-clamp-2">
+          <span className="flex items-center gap-4 ">
+            <ArrowsPointingOutIcon className="h-7 w-7 text-blue-500" />:   
+            <div>|  🛁:</div>
+            <div>|  🛏️:</div>
+            <div>|   :</div> 
+          </span>
+        </div>
       </div>
     </div>
   );
