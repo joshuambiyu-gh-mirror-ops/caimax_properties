@@ -13,7 +13,7 @@ export default function Header() {
         <div>
           <Image src="/caimax_logo.jpg" alt="Caimax Properties Logo" width={50} height={50} /> {/* Insert logo image */}
         </div>
-        <div className="text-sm  md:text-lg ">
+        <div className="text-sm  md:text-lg  hover:shadow-red-500/50 transition-shadow duration-300">
           <Link href="/" className="font-bold text-black">
             Caimax Properties
           </Link>
