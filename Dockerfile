@@ -88,7 +88,10 @@ RUN pnpm prune --prod
 # Stage 2: Runner
 FROM node:18-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV production
+
+# Set production environment variables explicitly
+ENV NODE_ENV=production
+ENV NEXTAUTH_URL=https://caimax.co.ke
 
 # (Optional) Install pnpm for runtime tasks if needed
 RUN npm install -g pnpm
