@@ -24,7 +24,7 @@ export default function Carousel({
   }, [autoSlide, autoSlideInterval, next]);
 
   return (
-    <div className="max-w-sm overflow-hidden relative w-full mx-auto">
+    <div className="max-w-sm overflow-hidden relative w-full mx-auto shadow-lg rounded-lg hover:shadow-red-500/50 transition-shadow duration-300">
       {/* Slide Container */}
       <div
         className="flex transition-transform ease-out duration-500"
@@ -36,7 +36,7 @@ export default function Carousel({
               src={image}
               alt={`Slide ${index + 1}`}
               fill
-              className="w-full h-auto object-cover rounded-lg"
+              className="w-full h-auto object-cover rounded-t-lg"
               priority={index === 0} // Optimize the first image
             />
           </div>
@@ -69,6 +69,13 @@ export default function Carousel({
             }`}
           />
         ))}
+      </div>
+
+      {/* Description */}
+      <div className="bg-white border-t border-gray-300 p-4 rounded-b-lg">
+        <p className="text-gray-700 line-clamp-2">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa.
+        </p>
       </div>
     </div>
   );
