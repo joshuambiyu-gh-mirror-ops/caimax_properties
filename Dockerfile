@@ -67,49 +67,44 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Copy environment file early so Prisma can pick up necessary variables
+# Copy .env early so that Prisma picks up required environment variables
 COPY .env .env
 
-# Install pnpm and dependencies
+# Copy package.json and pnpm-lock.yaml then install dependencies
 COPY package.json pnpm-lock.yaml ./
 RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
-# Copy the Prisma schema and related files
+# Copy the Prisma folder and generate the Prisma client
 COPY prisma ./prisma
-
-# Generate the Prisma client
-# (Ensure your prisma/schema.prisma is configured to generate the client into a custom folder like "prisma/generated")
 RUN npx prisma generate
 
-# Copy all remaining source files and build the application
+# Copy the rest of the source files and build the application
 COPY . .
 RUN pnpm run build
+
+# Remove dev dependencies so that node_modules only contains production deps (including the generated Prisma client)
+RUN pnpm prune --prod
 
 # Stage 2: Runner
 FROM node:18-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV production
 
-# Install pnpm in the runner stage
+# (Optional) Install pnpm for runtime tasks if needed
 RUN npm install -g pnpm
 
-# Copy built assets and necessary files from the builder stage
+# Copy built artifacts and necessary files from the builder stage
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
-
-# Copy the Prisma folder (including the generated client)
 COPY --from=builder /app/prisma ./prisma
-
-# Copy the environment file (if needed at runtime)
 COPY --from=builder /app/.env .env
-
-# Install only production dependencies
-RUN pnpm install --prod
+COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
 CMD ["pnpm", "start"]
+
 
 
