@@ -8,4 +8,5 @@ export default {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
+  trustHost: true,
 } satisfies NextAuthConfig;
