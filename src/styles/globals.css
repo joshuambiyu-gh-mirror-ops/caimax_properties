@@ -6,3 +6,27 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Custom Button Glow Effect with Red to Black */
+.btn-glow {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background-color: #ef4444; /* Red */
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease-in-out;
+}
+
+.btn-glow:hover {
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.6); /* Red glow */
+}
+
+.btn-glow:focus {
+  outline: none;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.6); /* Brighter red glow */
+}
+
+.btn-glow:active {
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.7); /* Black glow (shadow effect) */
+}

@@ -31,10 +31,10 @@ export default function HeaderAuth() {
     authContent = (
       <div className="flex gap-2">
         <form action={actions.signIn}>
-          <Button type="submit" variant="outline" className="text-sm px-2 py-1 sm:text-base sm:px-3 sm:py-2">Sign In</Button>
+          <Button type="submit" variant="outline" className="text-sm px-2 py-1 sm:text-base sm:px-3 sm:py-2 btn-glow relative-z-30">Sign In</Button>
         </form>
         <form action={actions.signIn}>
-          <Button type="submit" variant="default" className="text-sm px-2 py-1 sm:text-base sm:px-3 sm:py-2">Sign Up</Button>
+          <Button type="submit" variant="default" className="text-sm px-2 py-1 sm:text-base sm:px-3 sm:py-2 btn-glow relative-z-50">Sign Up</Button>
         </form>
       </div>
     );
