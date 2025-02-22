@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://caimax.co.ke"), 
   title: "Caimax Properties",
   description: "Caimax Properties is a real estate listings company that brings home closer to you.",
+  twitter:{
+    card: "summary_large_image"
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", type: "image/x-icon" },
