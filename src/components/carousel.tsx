@@ -78,9 +78,9 @@ export default function Carousel({
           <span className="flex items-center gap-4 ">
             <div className="flex items-center"><HomeIcon className="h-7 w-7 text-red-500"/>:</div>
             <div className="flex"><ArrowsPointingOutIcon className="h-7 w-7 text-black-500" />:</div>   
-            <div className="flex items-center">|  🛁:</div>
-            <div className="flex items-center">|  🛏️:</div>
-            <div className="flex items-center">|   :</div> 
+            <div className="flex items-center text-xl">|  🛁:</div>
+            <div className="flex items-center text-xl">|  🛏️:</div>
+            <div className="flex items-center text-xl">|   :</div> 
           </span>
         </div>
       </div>
