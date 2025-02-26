@@ -49,6 +49,7 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
+  listings      Listing[] // Add this optional relation
 }
 
 model VerificationToken {
@@ -57,4 +58,20 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Listing {
+  id            String   @id @default(cuid())
+  thumbnailUrl  String
+  footage       Int
+  bathroomCount Int
+  bedroomCount  Int
+  location      String
+  latitude      Float
+  longitude     Float
+  images        Image[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String   // Add this field for the relationship
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade) // Add the relation
 }
