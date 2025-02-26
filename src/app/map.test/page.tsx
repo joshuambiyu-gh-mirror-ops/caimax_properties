@@ -1,7 +1,8 @@
 "use client";
 import { useState } from 'react';
-import Map, { ViewState } from 'react-map-gl';
+import Map, {Marker, Popup, ViewState } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import getCenter from 'geolib/es/getCenter';
 
 export default function Home() {
   const [viewState, setViewState] = useState<ViewState>({
