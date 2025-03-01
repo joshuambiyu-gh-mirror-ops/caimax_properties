@@ -62,16 +62,25 @@ model VerificationToken {
 
 model Listing {
   id            String   @id @default(cuid())
-  thumbnailUrl  String
+  name          String   // Add this field for listingName
+  images        Image[]  
   footage       Int
   bathroomCount Int
   bedroomCount  Int
   location      String
   latitude      Float
   longitude     Float
-  images        Image[]
+  description   String
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  userId        String   // Add this field for the relationship
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade) // Add the relation
+}
+
+model Image {
+  id        String   @id @default(cuid())
+  url       String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  listingId String
+  order     Int      // For maintaining image order
 }

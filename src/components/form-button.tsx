@@ -1,21 +1,22 @@
 'use client';
 import { useFormStatus } from 'react-dom';
-import { Button } from './ui/button';  // Assuming you have a custom ShadCN Button
+import { Button } from './ui/button';
 
-interface FormButtonProps {
+interface FormButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
 }
 
-export default function FormButton({ children }: FormButtonProps) {
+export default function FormButton({ children, ...props }: FormButtonProps) {
   const { pending } = useFormStatus();
 
   return (
     <Button
       type="submit"
-      disabled={pending}  // Disable the button when the form is submitting
-      className={pending ? "opacity-50 cursor-not-allowed" : ""}  // Optional: to show loading state visually
+      disabled={pending || props.disabled}
+      className={pending ? "opacity-50 cursor-not-allowed" : ""}
+      {...props}
     >
-      {pending ? 'Loading...' : children}  {/* Display loading text while pending */}
+      {pending ? 'Loading...' : children}
     </Button>
   );
 }
