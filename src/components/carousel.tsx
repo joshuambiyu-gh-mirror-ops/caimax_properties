@@ -17,7 +17,7 @@ export default function Carousel({
   autoSlide = false,
   autoSlideInterval = 3000,
 }: CarouselProps) {
-  const images = listing.images.map(img => img.url);
+  const images = listing.images.map(img => `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/${img.url}`);
   const [curr, setCurr] = useState(0);
 
   const prev = () => setCurr((curr) => (curr === 0 ? images.length - 1 : curr - 1));
