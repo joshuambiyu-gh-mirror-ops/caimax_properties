@@ -15,5 +15,5 @@ jobs:
       - name: Delete Old Docker Container
         run: sudo docker rm -f caimax_client || true
       - name: Run Docker Container
-        run: sudo docker run -d --name caimax_client -p 8080:3000 joshuamumo/caimax_client:latest
+        run: sudo docker run -d --name caimax_client -p 8080:3000 -p 5555:5555 joshuamumo/caimax_client:latest
         
