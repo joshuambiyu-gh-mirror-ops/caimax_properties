@@ -87,7 +87,7 @@ export default function Carousel({
             </div>
             <div className="flex">
               <ArrowsPointingOutIcon className="h-7 w-7 text-black-500" />
-              <span className="ml-2">{listing.footage} sq ft</span>
+              <span className="ml-2 whitespace-nowrap">{listing.footage} sq ft</span>
             </div>   
             <div className="flex items-center text-xl">
               🛁 <span className="ml-2">{listing.bathroomCount}</span>
