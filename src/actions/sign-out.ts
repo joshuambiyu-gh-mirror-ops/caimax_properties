@@ -1,6 +1,8 @@
 'use server'
-import * as auth from '@/auth';
+import { redirect } from 'next/navigation';
+import { signOut as signOutUrl } from '@/auth';
 
-export async function signOut(){
-    return auth.signOut();
+export async function signOut(formData?: FormData) {
+    const url = signOutUrl();
+    redirect(url);
 }

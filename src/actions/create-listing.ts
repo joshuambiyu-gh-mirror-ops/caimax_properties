@@ -18,7 +18,8 @@ interface CreateListingData {
 export async function createListing(data: CreateListingData) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
+    const userId = (session?.user as any)?.id;
+    if (!userId) {
       return { error: 'Unauthorized' };
     }
 
@@ -32,7 +33,7 @@ export async function createListing(data: CreateListingData) {
         latitude: data.latitude,
         longitude: data.longitude,
         description: data.description,
-        userId: session.user.id,
+  userId: userId,
         images: {
           create: data.images.map((url, index) => ({
             url,

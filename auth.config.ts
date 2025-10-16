@@ -1,4 +1,4 @@
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
 export default {
@@ -8,5 +8,4 @@ export default {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  trustHost: true,
-} satisfies NextAuthConfig;
+} satisfies NextAuthOptions;
