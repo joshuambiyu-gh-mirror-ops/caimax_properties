@@ -17,7 +17,7 @@ export default function Providers({children}:ProviderProps){
     );
 }
 
-function InnerProviders({ children }:{children:React.ReactNode}){
+function InnerProviders({ children }:{children:React.ReactNode}) {
     const { status } = useSession();
 
     return (

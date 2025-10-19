@@ -67,6 +67,7 @@ export default function RootLayout({
             <main className="container mx-auto px-4 max-w-6xl flex-grow">
               {children}
             </main>
+            {/* SessionInfo removed */}
           </Providers>
         </div>
       </body>

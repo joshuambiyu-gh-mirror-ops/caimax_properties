@@ -5,9 +5,19 @@ import * as actions from '@/actions';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Avatar, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
+import OnboardingModal from './ui/onboarding-modal';
+import { useState, useEffect } from 'react';
 
 export default function HeaderAuth() {
   const session = useSession();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Simulate new user detection (replace with your own logic, e.g. session.data.user.isNew)
+  useEffect(() => {
+    if (session.status === 'authenticated' && session.data?.user && session.data.user.isNew) {
+      setShowOnboarding(true);
+    }
+  }, [session.status, session.data]);
 
   let authContent: React.ReactNode;
   if (session.status === 'loading') {
@@ -40,5 +50,15 @@ export default function HeaderAuth() {
     );
   }
 
-  return authContent;
+  return (
+    <>
+      {authContent}
+      {showOnboarding && (
+        <OnboardingModal onComplete={(propertyTypes) => {
+          // TODO: Save propertyTypes for user, then close modal
+          setShowOnboarding(false);
+        }} />
+      )}
+    </>
+  );
 }
