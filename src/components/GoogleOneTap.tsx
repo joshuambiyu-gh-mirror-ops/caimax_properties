@@ -16,15 +16,14 @@ export default function GoogleOneTap() {
   const [error, setError] = useState<string | null>(null);
 
   // Debug session state
+  // Only reset hasAttempted if status transitions from authenticated to unauthenticated
+  const [prevStatus, setPrevStatus] = useState(status);
   useEffect(() => {
-    console.log('[GoogleOneTap] Session status:', status);
-    console.log('[GoogleOneTap] Session data:', session);
-    
-    // Reset attempt if session is lost
-    if (status === 'unauthenticated') {
+    if (prevStatus === 'authenticated' && status === 'unauthenticated') {
       setHasAttempted(false);
     }
-  }, [status, session]);
+    setPrevStatus(status);
+  }, [status, prevStatus]);
 
   // Handle Google Script Loading
   useEffect(() => {

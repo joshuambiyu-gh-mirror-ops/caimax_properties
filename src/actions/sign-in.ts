@@ -1,10 +1,11 @@
 'use server'
 import { redirect } from 'next/navigation';
-import { signIn as signInUrl } from '@/auth';
 
-export async function signIn(formData?: FormData) {
-    // Optional: read form data if needed
-    const url = signInUrl('google');
-    redirect(url);
+export async function signIn(provider: string, formData?: FormData, callbackUrl?: string) {
+  // If callbackUrl is not provided, use default
+  const finalCallbackUrl = callbackUrl || '/';
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const url = `${baseUrl}/api/auth/signin/${provider}${finalCallbackUrl ? `?callbackUrl=${encodeURIComponent(finalCallbackUrl)}` : ''}`;
+  redirect(url);
 }
 

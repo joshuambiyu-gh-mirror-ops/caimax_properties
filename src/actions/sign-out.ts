@@ -1,8 +1,8 @@
 'use server'
 import { redirect } from 'next/navigation';
-import { signOut as signOutUrl } from '@/auth';
 
-export async function signOut(formData?: FormData) {
-    const url = signOutUrl();
-    redirect(url);
+export async function signOut(callbackUrl?: string) {
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const url = `${baseUrl}/api/auth/signout${callbackUrl ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ''}`;
+  redirect(url);
 }

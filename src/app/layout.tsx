@@ -64,7 +64,7 @@ export default function RootLayout({
         <div className="min-h-screen flex flex-col">
           <Providers>
             <Header />
-            <main className="container mx-auto px-4 max-w-6xl flex-grow">
+            <main className="w-full mx-10 flex-grow">
               {children}
             </main>
             {/* SessionInfo removed */}
