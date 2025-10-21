@@ -45,7 +45,6 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
 };
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -64,7 +63,7 @@ export default function RootLayout({
         <div className="min-h-screen flex flex-col">
           <Providers>
             <Header />
-            <main className="w-full mx-10 flex-grow">
+            <main className="w-full flex-grow">
               {children}
             </main>
             {/* SessionInfo removed */}

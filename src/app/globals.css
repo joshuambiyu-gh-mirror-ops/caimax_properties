@@ -1,3 +1,13 @@
+html, body {
+  scrollbar-width: none; /* Firefox */
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw;
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
