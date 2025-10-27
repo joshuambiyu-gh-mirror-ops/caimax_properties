@@ -7,4 +7,6 @@ export default async function Home() {
     return <div>Error loading listings</div>;
   }
   return <ListingsSearchLayout listings={listings || []} initialSearch={""} />;
+
+  
 }

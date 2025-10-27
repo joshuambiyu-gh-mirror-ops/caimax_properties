@@ -53,6 +53,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Prevent MetaMask from auto-injecting */}
+        <meta name="web3-onboard:environment" content="none" />
         {/* Favicon and other icons */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />

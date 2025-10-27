@@ -72,10 +72,28 @@ model Listing {
   latitude      Float
   longitude     Float
   description   String
+  propertyType  String   @default("House") // "Apartment" or "House"
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amenities     amenities[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  lastAmenityCheck DateTime? // Track when amenities were last updated
+}
+
+model amenities {
+  id          String   @id @default(cuid())
+  type        String   // e.g., "hospital", "restaurant", etc.
+  name        String   // Place name
+  distance    Float    // Distance in kilometers
+  latitude    Float
+  longitude   Float
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([listingId, type])
 }
 
 model Image {

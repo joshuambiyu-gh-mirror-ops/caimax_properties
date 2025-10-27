@@ -1,26 +1,75 @@
 "use client";
-import React, { useState, useTransition, useRef } from "react";
+import React, { useState, useTransition, useRef, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import FormButton from "./form-button";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { createListing } from "@/actions/create-listing";
+import { LocationInput } from "./location-input";
 
 export default function UpLoad() {
+  const { data: session } = useSession();
   const [isPending, startTransition] = useTransition();
   const [images, setImages] = useState<File[]>([]); // Store File objects
   const [imagePreviews, setImagePreviews] = useState<string[]>([]); // For preview URLs
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [formData, setFormData] = useState({
-    listingName: '',
-    footage: '',
-    bathroomCount: '',
-    bedroomCount: '',
-    location: '',
-    latitude: '',
-    longitude: '',
-    description: ''
+
+  interface FormData {
+    listingName: string;
+    footage: string;
+    bathroomCount: string;
+    bedroomCount: string;
+    location: string;
+    latitude: string;
+    longitude: string;
+    description: string;
+    propertyType: 'House' | 'Apartment';
+  }
+
+  // Initialize form data from localStorage if available
+  const [formData, setFormData] = useState<FormData>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('uploadFormData');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Clear the saved data as we're using it now
+          localStorage.removeItem('uploadFormData');
+          return parsed;
+        } catch (e) {
+          console.error('Error parsing saved form data:', e);
+        }
+      }
+    }
+    return {
+      listingName: '',
+      footage: '',
+      bathroomCount: '',
+      bedroomCount: '',
+      location: '',
+      latitude: '',
+      longitude: '',
+      description: '',
+      propertyType: 'House'
+    };
   });
+
+  // Initialize image previews from localStorage if available
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedPreviews = localStorage.getItem('uploadImagePreviews');
+      if (savedPreviews) {
+        try {
+          const parsed = JSON.parse(savedPreviews);
+          setImagePreviews(parsed);
+          localStorage.removeItem('uploadImagePreviews');
+        } catch (e) {
+          console.error('Error parsing saved image previews:', e);
+        }
+      }
+    }
+  }, []);
 
 
   // Handle file selection
@@ -37,10 +86,10 @@ export default function UpLoad() {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev: FormData) => ({
       ...prev,
       [name]: value
     }));
@@ -48,8 +97,24 @@ export default function UpLoad() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check authentication first
+    if (!session?.user) {
+      // Save current form state to localStorage
+      localStorage.setItem('uploadFormData', JSON.stringify(formData));
+      localStorage.setItem('uploadImagePreviews', JSON.stringify(imagePreviews));
+      // Redirect to sign in
+      window.location.href = '/api/auth/signin?callbackUrl=/upload-listing';
+      return;
+    }
+
     if (images.length === 0) {
       alert("Please upload at least one image");
+      return;
+    }
+    const latitudeNum = Number(formData.latitude);
+    if (isNaN(latitudeNum) || latitudeNum < -90 || latitudeNum > 90) {
+      alert("Latitude must be a number between -90 and 90.");
       return;
     }
 
@@ -69,10 +134,12 @@ export default function UpLoad() {
         }
         const data = await res.json();
         // You can use data.key (S3 object key) or data.url (full URL)
-        uploadedImageKeys.push(data.key);
+        uploadedImageKeys.push(data.url);
       }
 
       // Now create the listing with the S3 image keys
+      // Authentication was already checked at the start of submission
+
       const result = await createListing({
         ...formData,
         footage: Number(formData.footage),
@@ -81,9 +148,14 @@ export default function UpLoad() {
         latitude: Number(formData.latitude),
         longitude: Number(formData.longitude),
         images: uploadedImageKeys,
+        userId: (session.user as any)?.id,
       });
 
       if (result.error) {
+        if (result.error.includes('User ID is required')) {
+          window.location.href = '/api/auth/signin?callbackUrl=/upload-listing';
+          return;
+        }
         alert(result.error);
         return;
       }
@@ -99,7 +171,8 @@ export default function UpLoad() {
         location: '',
         latitude: '',
         longitude: '',
-        description: ''
+        description: '',
+        propertyType: 'House'
       });
     });
   };
@@ -175,76 +248,68 @@ export default function UpLoad() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="footage">Footage (sq ft)</Label>
-            <Input
-              id="footage"
-              name="footage"
-              type="number"
-              value={formData.footage}
+            <Label htmlFor="propertyType">Property Type</Label>
+            <select
+              id="propertyType"
+              name="propertyType"
+              value={formData.propertyType}
               onChange={handleInputChange}
-              placeholder="e.g. 1500"
-              className="w-full"
-            />
+              className="w-full rounded-md border border-input bg-background px-3 h-10"
+            >
+              <option value="House">House</option>
+              <option value="Apartment">Apartment</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="footage">Area (sq ft)</Label>
+              <Input
+                id="footage"
+                name="footage"
+                type="number"
+                value={formData.footage}
+                onChange={handleInputChange}
+                placeholder="1500"
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bedroomCount">Beds</Label>
+              <Input
+                id="bedroomCount"
+                name="bedroomCount"
+                type="number"
+                value={formData.bedroomCount}
+                onChange={handleInputChange}
+                placeholder="3"
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bathroomCount">Baths</Label>
+              <Input
+                id="bathroomCount"
+                name="bathroomCount"
+                type="number"
+                value={formData.bathroomCount}
+                onChange={handleInputChange}
+                placeholder="2"
+                className="w-full"
+              />
+            </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bathroomCount">Bathrooms</Label>
-            <Input
-              id="bathroomCount"
-              name="bathroomCount"
-              type="number"
-              value={formData.bathroomCount}
-              onChange={handleInputChange}
-              placeholder="e.g. 2"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="bedroomCount">Bedrooms</Label>
-            <Input
-              id="bedroomCount"
-              name="bedroomCount"
-              type="number"
-              value={formData.bedroomCount}
-              onChange={handleInputChange}
-              placeholder="e.g. 3"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              name="location"
-              value={formData.location}
-              onChange={handleInputChange}
-              placeholder="e.g. 123 Main St, City"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="latitude">Latitude</Label>
-            <Input
-              id="latitude"
-              name="latitude"
-              type="number"
-              step="any"
-              value={formData.latitude}
-              onChange={handleInputChange}
-              placeholder="e.g. -1.2921"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="longitude">Longitude</Label>
-            <Input
-              id="longitude"
-              name="longitude"
-              type="number"
-              step="any"
-              value={formData.longitude}
-              onChange={handleInputChange}
-              placeholder="e.g. 36.8219"
-              className="w-full"
+            <Label>Location</Label>
+            <LocationInput 
+              onLocationSelect={(location) => {
+                setFormData(prev => ({
+                  ...prev,
+                  location: location.address,
+                  latitude: location.latitude.toString(),
+                  longitude: location.longitude.toString()
+                }));
+              }}
             />
           </div>
           {/* UserId can be handled on the server side or via context/session */}

@@ -1,6 +1,6 @@
 import UpLoad from "@/components/upload";
 
-export default function page() {
+export default function UploadListingPage() {
   return (
     <UpLoad/>
   )
