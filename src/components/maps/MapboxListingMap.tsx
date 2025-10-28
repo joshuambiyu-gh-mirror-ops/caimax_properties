@@ -401,6 +401,13 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
               {nearbyPlaces.map((place, idx) => (
                 <button
                   key={`${place.name}-${idx}`}
+                  onMouseDown={(e) => e.preventDefault()} /* prevent first-click auto-scroll */
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                      e.preventDefault();
+                      /* Let onClick handle the action via keyboard activation */
+                    }
+                  }}
                   onClick={async () => {
                     const [lngP, latP] = place.coordinates;
                     setSelectedPlace(place);

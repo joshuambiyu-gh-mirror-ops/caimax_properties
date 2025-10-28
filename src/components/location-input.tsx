@@ -1,33 +1,43 @@
 "use client";
+
 import { useState } from 'react';
+import { MapPin, Link as LinkIcon } from 'lucide-react';
+import Map, { Marker } from 'react-map-gl';
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
-import { MapPin, Link as LinkIcon } from 'lucide-react';
-import Map, { Marker, NavigationControl } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import type { ViewState } from 'react-map-gl';
+
+interface ViewStateWithDimensions extends ViewState {
+  width: number;
+  height: number;
+}
+
+interface LocationData {
+  address: string;
+  latitude: number;
+  longitude: number;
+}
 
 interface LocationInputProps {
-  onLocationSelect: (location: { 
-    address: string;
-    latitude: number;
-    longitude: number;
-  }) => void;
+  onLocationSelect: (location: LocationData) => void;
 }
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoibWJpeXUiLCJhIjoiY203aXZ0cGQxMDBsdzJqc2EwdXB6ZngxciJ9.tY4trIwdOSdm1_Z0EXq-CQ";
 
 export function LocationInput({ onLocationSelect }: LocationInputProps) {
   const [locationLink, setLocationLink] = useState('');
-  const [location, setLocation] = useState<{
-    address: string;
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const [viewState, setViewState] = useState<any>({
+  const [location, setLocation] = useState<LocationData | null>(null);
+  const [viewState, setViewState] = useState<ViewStateWithDimensions>({
     longitude: 39.8256,
     latitude: 0.5360,
     zoom: 6,
+    bearing: 0,
+    pitch: 0,
+    padding: { top: 0, bottom: 0, left: 0, right: 0 },
+    width: 800,  // Default width
+    height: 180  // Match the container height
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,38 +58,8 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const { latitude, longitude, accuracy } = position.coords;
-          console.log('Got coordinates from browser geolocation:', { latitude, longitude, accuracy });
-          
-          // Reverse geocode to get address with more precise parameters
-          const response = await fetch(
-            `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}&types=place,locality,neighborhood,address&limit=1&language=en&fuzzyMatch=false`
-          );
-          
-          if (!response.ok) {
-            throw new Error(`Mapbox API error: ${response.status}`);
-          }
-          
-          const data = await response.json();
-          console.log('Mapbox reverse geocode response features:', data.features && data.features.length ? data.features[0] : null);
-          
-          if (!data.features || data.features.length === 0) {
-            throw new Error('No location data found');
-          }
-          
-          const address = data.features[0]?.place_name || '';
-          
-          const locationData = {
-            address,
-            latitude,
-            longitude
-          };
-          
-          console.log('Setting location:', locationData);
-          setLocation(locationData);
-          // update map view to selected location
-          setViewState({ longitude: longitude, latitude: latitude, zoom: 16 });
-          onLocationSelect(locationData);
+          const { latitude, longitude } = position.coords;
+          await updateLocationFromCoordinates(latitude, longitude);
         } catch (error) {
           console.error('Location error:', error);
           setError(`Failed to get location details: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -129,7 +109,7 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
       }
       
       const data = await response.json();
-      console.log('Mapbox reverse geocode for coordinates:', { lat, lng, feature: data.features && data.features.length ? data.features[0] : null });
+      console.log('Mapbox reverse geocode response:', data);
       
       if (!data.features || data.features.length === 0) {
         throw new Error('No location data found');
@@ -137,14 +117,14 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
 
       const address = data.features[0]?.place_name || '';
 
-      const locationData = {
+      const locationData: LocationData = {
         address,
         latitude: lat,
         longitude: lng
       };
 
       setLocation(locationData);
-      setViewState({ longitude: lng, latitude: lat, zoom: 16 });
+      setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 16 }));
       onLocationSelect(locationData);
     } catch (error) {
       console.error('Location error:', error);
@@ -152,12 +132,42 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
     }
   };
 
+  const parseDMS = (dms: string) => {
+    // Match degrees, minutes, seconds with optional decimal and direction
+    const pattern = /^(-?\d+)°?(\d+)?'?(\d+(\.\d+)?)?\"?([NSEW])?$/;
+    const match = dms.trim().match(pattern);
+    
+    if (!match) return null;
+    
+    const [_, degrees, minutes = "0", seconds = "0", , direction] = match;
+    let dd = Number(degrees) + Number(minutes)/60 + Number(seconds)/(60*60);
+    
+    if (direction === 'S' || direction === 'W') {
+      dd = -dd;
+    }
+    
+    return dd;
+  };
+
   const parseLocationLink = async () => {
     setLoading(true);
     setError(null);
+    setLocation(null); // Clear previous location
 
     try {
-      // First, try to extract coordinates from the text
+      // First, try to extract DMS coordinates
+      const dmsPattern = /([-+]?\d+°\d+'[\d.]+\"[NS])\s*([-+]?\d+°\d+'[\d.]+\"[EW])/;
+      const dmsMatch = locationLink.match(dmsPattern);
+      if (dmsMatch) {
+        const lat = parseDMS(dmsMatch[1]);
+        const lng = parseDMS(dmsMatch[2]);
+        if (lat !== null && lng !== null) {
+          await updateLocationFromCoordinates(lat, lng);
+          return;
+        }
+      }
+
+      // Try to extract decimal coordinates
       const coordsRegex = /[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)/;
       const coordsMatch = locationLink.match(coordsRegex);
       
@@ -169,74 +179,116 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
         }
       }
 
-      let lat: number | null = null;
-      let lng: number | null = null;
-
       // Parse the URL
       let urlToParse = locationLink;
       
-      // Handle short URLs first
-      if (locationLink.includes('goo.gl/maps')) {
-        const response = await fetch(locationLink);
-        urlToParse = response.url;
+      // Handle short URLs and redirects.
+      // NOTE: resolving short URLs (maps.app.goo.gl / goo.gl) from the browser often fails due to CORS.
+      // Resolve the short URL on the server via an API route to avoid client-side fetch errors.
+      if (locationLink.includes('goo.gl') || locationLink.includes('maps.app.goo.gl')) {
+        try {
+          const res = await fetch('/api/resolve-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: locationLink })
+          });
+
+          if (res.ok) {
+              const json = await res.json();
+              const srvFinal = json?.finalUrl;
+              const bodySnippet: string | undefined = json?.bodySnippet;
+
+              if (srvFinal) {
+                urlToParse = srvFinal;
+                console.log('Resolved short URL to (server):', urlToParse);
+              } else {
+                console.warn('Resolve API returned no finalUrl, using original link');
+              }
+
+              // If the resolved URL doesn't contain coordinates, try to extract from the HTML snippet
+              const coordsInUrl = /@(-?\d+\.\d+),(-?\d+\.\d+)/.test(urlToParse);
+              if (!coordsInUrl && bodySnippet) {
+                // common patterns in Google Maps pages include @lat,lng and center=lat,lng
+                let m = bodySnippet.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (!m) m = bodySnippet.match(/center=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
+                if (!m) m = bodySnippet.match(/ll=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
+
+                if (m) {
+                  const lat = parseFloat(m[1]);
+                  const lng = parseFloat(m[2]);
+                  if (!isNaN(lat) && !isNaN(lng)) {
+                    console.log('Found coordinates in resolved HTML snippet:', { lat, lng });
+                    await updateLocationFromCoordinates(lat, lng);
+                    return;
+                  }
+                }
+              }
+            } else {
+              console.warn('Resolve API failed to expand short URL', await res.text());
+            }
+        } catch (error) {
+          console.error('Error requesting server to resolve short URL:', error);
+          // Continue with original URL if resolving fails
+        }
       }
 
-      const url = new URL(urlToParse);
+      try {
+        const url = new URL(urlToParse);
+        console.log('Parsing URL:', url.toString());
 
-      // Parse Google Maps links
-      if (url.hostname.includes('google.com/maps') || url.hostname.includes('goo.gl')) {
-        // Try different Google Maps formats
-        const params = url.searchParams;
-        // Format: ?q=lat,lng
-        const query = params.get('q');
-        if (query?.includes(',')) {
-          [lat, lng] = query.split(',').map(Number);
-        }
-        // Format: /@lat,lng
-        const path = url.pathname;
-        if (path.includes('/@')) {
-          const coords = path.split('/@')[1].split(',');
-          lat = parseFloat(coords[0]);
-          lng = parseFloat(coords[1]);
-        }
-        // Format: ?ll=lat,lng
-        const ll = params.get('ll');
-        if (ll?.includes(',')) {
-          [lat, lng] = ll.split(',').map(Number);
-        }
-      }
-      // Parse WhatsApp location links
-      else if (url.hostname.includes('maps.google.com')) {
-        const params = url.searchParams;
-        const q = params.get('q');
-        if (q?.includes(',')) {
-          [lat, lng] = q.split(',').map(Number);
-        }
-      }
+        // Parse Google Maps links
+        if (url.hostname.includes('google.com/maps') || url.hostname.includes('goo.gl')) {
+          const params = url.searchParams;
+          let lat: number | null = null;
+          let lng: number | null = null;
 
-      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-        // Reverse geocode to get address
-        console.log('Parsed coordinates from link:', { lat, lng });
-        const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`
-        );
-        const data = await response.json();
-        console.log('Mapbox reverse geocode for parsed link:', data.features && data.features.length ? data.features[0] : null);
-        const address = data.features[0]?.place_name || '';
-        
-        const locationData = {
-          address,
-          latitude: lat,
-          longitude: lng
-        };
-        
-        setLocation(locationData);
-        onLocationSelect(locationData);
-      } else {
-        setError('Could not extract location from the link. Please ensure it\'s a valid Google Maps or WhatsApp location link.');
+          // Check URL parameters for coordinates
+          for (const [key, value] of params.entries()) {
+            // Look for coordinates in any parameter
+            if (value?.includes(',')) {
+              const coords = value.split(',').map(Number);
+              if (coords.length >= 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                [lat, lng] = coords;
+                break;
+              }
+            }
+          }
+
+          // If no coordinates found in parameters, try URL path
+          if (!lat || !lng) {
+            const urlText = url.toString();
+            const coords = urlText.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+            if (coords) {
+              lat = parseFloat(coords[1]);
+              lng = parseFloat(coords[2]);
+            }
+          }
+        }
+        // Parse WhatsApp location links
+        else if (url.hostname.includes('maps.google.com')) {
+          const params = url.searchParams;
+          const q = params.get('q');
+          if (q?.includes(',')) {
+            const [lat, lng] = q.split(',').map(Number);
+            if (!isNaN(lat) && !isNaN(lng)) {
+              await updateLocationFromCoordinates(lat, lng);
+              return;
+            }
+          }
+        }
+
+        throw new Error('Could not extract location from the link. Please ensure it\'s a valid Google Maps or WhatsApp location link.');
+      } catch (error) {
+        console.error('Error parsing URL:', error);
+        throw new Error('Invalid URL format. Please ensure you\'ve copied the entire link.');
       }
     } catch (error) {
-      setError('Invalid location link. Please ensure you\'ve copied the entire link.');
+      console.error('Error parsing location:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Invalid location link. Please ensure you\'ve copied the entire link.');
+      }
     } finally {
       setLoading(false);
     }
@@ -301,17 +353,14 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
             </div>
           )}
           <Map
-            // use viewState so the map recenters when user picks current location
             viewState={viewState}
-            onMove={(evt) => setViewState(evt.viewState)}
+            onMove={(evt) => setViewState(prev => ({ ...prev, ...evt.viewState }))}
             style={{ width: '100%', height: '100%' }}
             mapStyle="mapbox://styles/mapbox/streets-v12"
             mapboxAccessToken={MAPBOX_TOKEN}
             interactive={false}
             scrollZoom={false}
           >
-            {/* Removed NavigationControl since it's just a preview */}
-            
             {location && (
               <Marker
                 longitude={location.longitude}

@@ -18,6 +18,27 @@ enum Role {
   ADMIN
 }
 
+enum PropertyType {
+  HOUSE
+  APARTMENT
+  VILLA
+  TOWNHOUSE
+  CONDO
+  DUPLEX
+  STUDIO
+  LAND
+  OTHER
+}
+
+enum Facility {
+  LAUNDRY
+  SWIMMING_POOL
+  WIFI
+  PET_FRIENDLY
+  PARKING
+  GYM
+}
+
 
 model Account {
   id                String  @id @default(cuid())
@@ -78,7 +99,9 @@ model Listing {
   latitude      Float
   longitude     Float
   description   String
-  propertyType  String   @default("House") // "Apartment" or "House"
+  propertyType  PropertyType @default(HOUSE)
+  price        Float?
+  facilities   Facility[]
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   amenities     amenities[]

@@ -57,7 +57,15 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
               <li key={a.id} className="flex-none">
                 <button
                   onClick={() => handleClick(a)}
+                  onMouseDown={(e) => e.preventDefault()} /* prevent browser auto-scroll on first click */
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                      e.preventDefault();
+                      handleClick(a);
+                    }
+                  }}
                   className="snap-center min-w-[100px] bg-white/50 backdrop-blur-sm rounded-lg p-2 ring-1 ring-black/5 hover:ring-black/10 hover:bg-white/80 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 group"
+                  type="button"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <div className="p-1.5 bg-gray-50 rounded text-gray-600 group-hover:text-gray-900 transition-colors">

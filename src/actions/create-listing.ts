@@ -13,7 +13,9 @@ interface CreateListingData {
   latitude: number;
   longitude: number;
   description: string;
-  propertyType: 'Apartment' | 'House';
+  propertyType: 'HOUSE' | 'APARTMENT' | 'VILLA' | 'TOWNHOUSE' | 'CONDO' | 'DUPLEX' | 'STUDIO' | 'LAND' | 'OTHER';
+  price: number | null;
+  facilities: ('LAUNDRY' | 'SWIMMING_POOL' | 'WIFI' | 'PET_FRIENDLY' | 'PARKING' | 'GYM')[];
   images: string[];
   userId?: string;
 }
@@ -68,6 +70,9 @@ export async function createListing(data: CreateListingData) {
             latitude: data.latitude,
             longitude: data.longitude,
             description: data.description,
+            propertyType: data.propertyType,
+            price: data.price,
+            facilities: data.facilities,
             userId: data.userId,
             images: {
               create: data.images.map((url, index) => ({

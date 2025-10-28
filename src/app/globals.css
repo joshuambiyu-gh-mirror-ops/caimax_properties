@@ -93,3 +93,12 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Reduce Mapbox popup jitter: remove transition/transform animations
+   so Mapbox's repositioning doesn't produce visible micro-movement. */
+.mapboxgl-popup,
+.mapboxgl-popup-content,
+.mapboxgl-popup-tip {
+  transition: none !important;
+  transform: none !important;
+}

@@ -69,13 +69,18 @@ export default async function Page({
           <span className="mx-2">/</span>
           <span>Property Details</span>
         </div>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{listing.name}</h1>
-            <div className="flex items-center gap-2 mt-2">
+        <div className="flex flex-col gap-4">
+          <h1 className="text-3xl font-bold text-gray-900">{listing.name}</h1>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-gray-400" />
-              <p className="text-lg text-gray-600">{listing.location}</p>
+              <span className="text-lg text-gray-600">{listing.location}</span>
             </div>
+            {typeof listing.price === 'number' && (
+              <div className="flex items-center">
+                <span className="text-2xl font-extrabold text-gray-900">{formatPrice(listing.price)}</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             {/* Share and Contact buttons removed per request */}
@@ -166,43 +171,72 @@ export default async function Page({
         {/* Right Column - Contact and Details */}
         <div className="space-y-6 lg:max-w-none">
       <div className="sticky top-24 w-full">
+        {/* Price card (right column) */}
+        {typeof listing.price === 'number' && (
+          <Card className="mb-6">
+            <div className="p-6 space-y-6">
+              <div className="text-center space-y-3">
+                <div className="text-base text-gray-500 font-medium">Price</div>
+                <div className="text-4xl font-bold text-gray-900">{formatPrice(listing.price)}</div>
+              </div>
+              
+              <div className="pt-4 border-t border-gray-200">
+                <div className="text-base text-gray-500 font-medium mb-3">Estimated changes</div>
+                <div className="text-sm text-gray-900">No changes</div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <IntentionForm listingId={listing.id} listingName={listing.name} listingImageUrl={listing.images?.[0]?.url ?? null} />
 
-            {/* Property Description */}
+            {/* Description + Details (merged) */}
             <Card className="overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
               <div className="p-6">
                 <h3 className="text-xl font-semibold mb-4">Property Description</h3>
                 <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
                   {listing.description}
                 </p>
-              </div>
-            </Card>
-            
-            {/* Additional Property Details */}
-            <Card className="mt-6 overflow-hidden shadow-lg">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold mb-6">Property Details</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-600">Listed Date</span>
-                    <span className="font-medium">
-                      {new Date(listing.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-600">Property ID</span>
-                    <span className="font-medium text-sm bg-gray-100 px-3 py-1 rounded-full">
-                      {listing.id}
-                    </span>
+
+                <div className="mt-6 pt-6 border-t">
+                  <h4 className="text-lg font-semibold mb-4">Property Details</h4>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-gray-600">Listed Date</span>
+                      <span className="font-medium">
+                        {new Date(listing.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-gray-600">Property ID</span>
+                      <span className="font-medium text-sm bg-gray-100 px-3 py-1 rounded-full">
+                        {listing.id}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </Card>
+            {/* Facilities Card */}
+            {Array.isArray(listing.facilities) && listing.facilities.length > 0 && (
+              <Card className="mt-6 overflow-hidden shadow-lg">
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold mb-4">Facilities</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {listing.facilities.map((fac: string, idx: number) => (
+                      <Badge key={idx} variant="secondary" className="px-3 py-1">
+                        {fac.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </div>
