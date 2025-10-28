@@ -13,6 +13,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 
 model Account {
   id                String  @id @default(cuid())
@@ -51,6 +56,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   listings      Listing[] // Add this optional relation
+  role          Role      @default(USER)
 }
 
 model VerificationToken {
@@ -76,6 +82,7 @@ model Listing {
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   amenities     amenities[]
+  intentions    Intention[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   lastAmenityCheck DateTime? // Track when amenities were last updated
@@ -102,4 +109,20 @@ model Image {
   listing   Listing  @relation(fields: [listingId], references: [id])
   listingId String
   order     Int      // For maintaining image order
+}
+
+// Persist user intentions to contact about a listing
+model Intention {
+  id         String   @id @default(cuid())
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userEmail  String
+  message    String?
+  userEmailHtml String?
+  agentEmailHtml String?
+  sendStatus  String?  // 'pending' | 'sent' | 'failed'
+  sendError   String?
+  createdAt  DateTime @default(now())
+
+  @@index([listingId])
 }

@@ -2,9 +2,9 @@ import PropertyGallery from '@/components/PropertyGallery';
 import { db } from '@/db';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ListingsMap, MapboxListingMap } from '@/components/maps';
+import { ListingsMap } from '@/components/maps';
+import MapSection from '@/components/maps/MapSection';
 import { getNearestPerType } from '@/lib/calculate-nearby-amenities';
-import NearbyAmenitiesClient from '@/components/nearby-amenities/NearbyAmenitiesClient';
 import { getRelatedListings } from '@/actions/get-listings';
 import Carousel from '@/components/carousel';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ import {
   List
 } from 'lucide-react';
 
+import IntentionForm from '@/components/intention-form';
 
 interface PageProps {
   params: { slug: string };
@@ -159,31 +160,20 @@ export default async function Page({
           </Card>
 
           {/* Location Map */}
-          <Card className="overflow-hidden shadow-lg">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Location & Nearby Places</h2>
-              <div className="aspect-[16/9] rounded-lg overflow-hidden">
-                <MapboxListingMap
-                  listingId={listing.id}
-                  lat={listing.latitude}
-                  lng={listing.longitude}
-                  name={listing.name}
-                  address={listing.location}
-                />
-              </div>
-              
-              {/* Client-rendered Nearby Amenities in a horizontal scrollable row */}
-              <div className="mt-6">
-                <NearbyAmenitiesClient amenities={nearestPerType} />
-              </div>
-            </div>
-          </Card>
+          <MapSection 
+            listingId={listing.id}
+            lat={listing.latitude}
+            lng={listing.longitude}
+            name={listing.name}
+            address={listing.location}
+            nearestPerType={nearestPerType}
+          />
         </div>
 
         {/* Right Column - Contact and Details */}
         <div className="space-y-6 lg:max-w-none">
-          <div className="sticky top-24 w-full">
-            {/* Express Interest form removed */}
+      <div className="sticky top-24 w-full">
+        <IntentionForm listingId={listing.id} listingName={listing.name} listingImageUrl={listing.images?.[0]?.url ?? null} />
 
             {/* Property Description */}
             <Card className="overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">

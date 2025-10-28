@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect, ReactNode, useRef } from 'react';
-import Map, { 
-  Marker, 
-  NavigationControl, 
+import Map, {
+  Marker,
+  NavigationControl,
   Popup,
   ViewState,
   Source,
-  Layer
+  Layer,
 } from 'react-map-gl';
 
 // Load FlyToInterpolator at runtime to avoid typing/exports mismatch across react-map-gl versions.
@@ -217,7 +217,7 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
     }
   }, [lng, lat, showPlaces]);
 
-  // Listen for external "fly to" requests (from server-rendered list or other client widgets)
+  // Listen for external "fly to" and "reset view" requests
   useEffect(() => {
     async function onFlyTo(e: any) {
       const d = e?.detail;
@@ -279,11 +279,30 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
       }));
     }
 
+    function onResetView() {
+      setSelectedPlace(null);
+      setRouteGeoJSON(null);
+      setViewState((prev: any) => ({
+        ...prev,
+        longitude: lng,
+        latitude: lat,
+        zoom: 15,
+        bearing: 0,
+        pitch: 0,
+        transitionDuration: 800,
+        transitionInterpolator: FlyToInterpolator ? new FlyToInterpolator({ speed: 1.2 }) : undefined
+      }));
+    }
+
     window.addEventListener('caimax:flyToAmenity', onFlyTo as EventListener);
-    return () => window.removeEventListener('caimax:flyToAmenity', onFlyTo as EventListener);
+    window.addEventListener('caimax:resetMapView', onResetView as EventListener);
+    return () => {
+      window.removeEventListener('caimax:flyToAmenity', onFlyTo as EventListener);
+      window.removeEventListener('caimax:resetMapView', onResetView as EventListener);
+    };
   }, []);
 
-  return (
+    return (
     <Card className="w-full overflow-hidden">
       {/* Map Container */}
       <div className="w-full h-[500px]">
@@ -360,8 +379,8 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
           {address && <p className="text-sm text-gray-600 mt-1">{address}</p>}
         </div>
 
-        {/* Points of Interest Toggle */}
-        <div className="absolute top-4 right-4 z-10">
+        {/* Points of Interest Toggle and Reset */}
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
           <Button
             variant={showPlaces ? "default" : "outline"}
             size="sm"
@@ -374,8 +393,7 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
       </div>
 
       {/* Nearby Places List - clickable to fly the map to the place */}
-      <div className="mt-4">
-        <h4 className="text-sm font-semibold mb-2">Nearby Places</h4>
+      <div className="mt-4 p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {isLoading && (
             <div className="text-sm text-gray-500">Loading nearby places...</div>
@@ -446,29 +464,7 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
           ))}
         </div>
 
-        {/* Back to listing button */}
-        <div className="mt-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // animate back to listing location
-              setSelectedPlace(null);
-              setViewState((prev: any) => ({
-                ...prev,
-                longitude: lng,
-                latitude: lat,
-                zoom: 15,
-                bearing: 0,
-                pitch: 0,
-                transitionDuration: 800,
-                transitionInterpolator: FlyToInterpolator ? new FlyToInterpolator({ speed: 1.2 }) : undefined
-              }));
-            }}
-          >
-            Back to property
-          </Button>
-        </div>
+
       </div>
     </Card>
   );
