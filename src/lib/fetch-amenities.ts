@@ -46,6 +46,8 @@ export async function fetchAndStoreAmenities(listingId: string) {
     console.log('Amenity types to fetch:', amenityTypes);
     const amenities: any[] = [];
 
+    const MAX_PER_TYPE = 5; // limit saved amenities per type to avoid overload
+
     // Fetch amenities for each type
     for (const type of amenityTypes) {
       // Create Overpass query for a 5km radius
@@ -62,16 +64,45 @@ export async function fetchAndStoreAmenities(listingId: string) {
         out skel qt;
       `;
 
-      const response = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `data=${encodeURIComponent(query)}`,
-      });
+      // Simple retry/backoff for rate limits or transient errors
+      let response: Response | null = null;
+      let attempt = 0;
+      const maxAttempts = 3;
+      const baseDelay = 1000; // ms
+      while (attempt < maxAttempts) {
+        try {
+          response = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `data=${encodeURIComponent(query)}`,
+          });
 
-      if (!response.ok) {
-        console.error(`Failed to fetch ${type} amenities:`, response.statusText);
+          if (response.status === 429) {
+            // Too many requests - back off and retry
+            const wait = baseDelay * Math.pow(2, attempt);
+            console.warn(`Overpass rate limited (429). Retrying after ${wait}ms...`, { type, attempt });
+            await new Promise((r) => setTimeout(r, wait));
+            attempt++;
+            continue;
+          }
+
+          if (!response.ok) {
+            console.error(`Failed to fetch ${type} amenities:`, response.statusText);
+            response = null;
+          }
+          break;
+        } catch (err) {
+          console.error('Overpass fetch error, attempt', attempt, err);
+          const wait = baseDelay * Math.pow(2, attempt);
+          await new Promise((r) => setTimeout(r, wait));
+          attempt++;
+        }
+      }
+
+      if (!response) {
+        console.error(`Giving up fetching ${type} after ${maxAttempts} attempts`);
         continue;
       }
 
@@ -95,20 +126,21 @@ export async function fetchAndStoreAmenities(listingId: string) {
       );
       console.log(`Found ${elements.length} ${type} amenities nearby`);
 
-      // Process and store each amenity
+      // Build a candidate list with computed distances, then sort and pick the closest MAX_PER_TYPE
+      const candidates: any[] = [];
       for (const element of elements) {
         const lat = element.lat ?? element.center?.lat;
         const lng = element.lon ?? element.center?.lon;
-        
+
         // Skip if we don't have valid coordinates
         if (lat === undefined || lng === undefined) continue;
-        
+
         // Construct name from available tags
-        const name = element.tags.name || 
-          (element.tags['addr:housenumber'] && element.tags['addr:street'] 
+        const name = element.tags.name ||
+          (element.tags['addr:housenumber'] && element.tags['addr:street']
             ? `${element.tags['addr:housenumber']} ${element.tags['addr:street']}`
             : `${type} #${element.id}`);
-        
+
         // Calculate distance using the Haversine formula
         const R = 6371; // Earth's radius in kilometers
         const dLat = ((lat - listing.latitude) * Math.PI) / 180;
@@ -123,7 +155,6 @@ export async function fetchAndStoreAmenities(listingId: string) {
 
         // Only include amenities within 5km
         if (distance <= 5) {
-
           const amenity = {
             type,
             name,
@@ -132,10 +163,20 @@ export async function fetchAndStoreAmenities(listingId: string) {
             longitude: lng,
             listingId
           };
-          console.log('Found amenity:', amenity);
-          amenities.push(amenity);
-        } // Close the if (distance <= 5) check
+          candidates.push(amenity);
+        }
       }
+
+      // Sort candidates by distance and take the closest MAX_PER_TYPE
+      candidates.sort((a, b) => a.distance - b.distance);
+      const toStore = candidates.slice(0, MAX_PER_TYPE);
+      toStore.forEach((a) => {
+        console.log('Selected amenity to store:', a);
+        amenities.push(a);
+      });
+
+      // Respectful delay between Overpass requests to reduce rate-limiting
+      await new Promise((r) => setTimeout(r, 300));
     }
 
     // Delete existing amenities for this listing

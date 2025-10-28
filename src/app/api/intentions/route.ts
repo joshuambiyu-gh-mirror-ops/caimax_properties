@@ -122,29 +122,36 @@ export async function POST(request: Request) {
     // Try sending emails. Record result and update the Intention with the
     // generated HTML and send status so devs can preview without a verified domain.
     let sendErr: any = null;
-    try {
-      await Promise.all([
-        sendEmail({ to: userEmail, subject: `Thanks for your interest in ${listingName}`, html: userHtml }),
-        sendEmail({ to: AGENT_EMAIL, subject: `New interest for ${listingName}`, html: agentHtml })
-      ]);
-      console.log('Intention emails sent successfully');
-    } catch (mailErr: any) {
-      console.error('Error sending intention emails:', mailErr);
-      sendErr = (mailErr && (mailErr.message || mailErr.toString())) || String(mailErr);
-    }
+      let userSendResp: any = null;
+      let agentSendResp: any = null;
+      try {
+        const results = await Promise.all([
+          sendEmail({ to: userEmail, subject: `Thanks for your interest in ${listingName}`, html: userHtml }),
+          sendEmail({ to: AGENT_EMAIL, subject: `New interest for ${listingName}`, html: agentHtml })
+        ]);
+        userSendResp = results[0];
+        agentSendResp = results[1];
+        console.log('Intention emails sent (or accepted) by Resend', { userSendResp, agentSendResp });
+      } catch (mailErr: any) {
+        console.error('Error sending intention emails:', mailErr);
+        sendErr = (mailErr && (mailErr.message || mailErr.toString())) || String(mailErr);
+      }
 
     // Update the Intention record with the email HTML and send status if we persisted it
     try {
       if (created && created.id) {
-        await (db as any).intention.update({
-          where: { id: created.id },
-          data: {
-            userEmailHtml: userHtml,
-            agentEmailHtml: agentHtml,
-            sendStatus: sendErr ? 'failed' : 'sent',
-            sendError: sendErr ?? null
-          }
-        });
+        const updateData: any = {
+          userEmailHtml: userHtml,
+          agentEmailHtml: agentHtml,
+          sendStatus: sendErr ? 'failed' : 'sent',
+          sendError: sendErr ?? null
+        };
+        // store resend message ids / responses for webhook correlation
+        if (userSendResp && userSendResp.id) updateData.resendMessageId = userSendResp.id;
+        // store delivery events object with both responses
+        updateData.deliveryEvents = { user: userSendResp ?? null, agent: agentSendResp ?? null };
+
+        await (db as any).intention.update({ where: { id: created.id }, data: updateData });
         console.log('Intention updated with email preview and status', { id: created.id, status: sendErr ? 'failed' : 'sent' });
       }
     } catch (updErr) {
