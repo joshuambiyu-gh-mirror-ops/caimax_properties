@@ -4,7 +4,17 @@ import { MapboxListingMap } from '@/components/maps';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import NearbyAmenitiesClient from '@/components/nearby-amenities/NearbyAmenitiesClient';
-import { type Amenity } from '@prisma/client';
+
+// Local Amenity shape (Prisma model is named `amenities` in schema, so importing a generated
+// `Amenity` type may not match. Define a local type to avoid the TS import mismatch.)
+interface Amenity {
+  id: string;
+  type: string;
+  name?: string;
+  distance?: number;
+  latitude?: number;
+  longitude?: number;
+}
 
 interface MapSectionProps {
   listingId: string;

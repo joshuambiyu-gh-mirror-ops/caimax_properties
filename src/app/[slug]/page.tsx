@@ -78,14 +78,7 @@ export default async function Page({
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button size="lg" variant="outline" className="gap-2">
-              <Mail className="h-4 w-4" />
-              Share
-            </Button>
-            <Button size="lg" variant="default" className="gap-2">
-              <Phone className="h-4 w-4" />
-              Contact Agent
-            </Button>
+            {/* Share and Contact buttons removed per request */}
           </div>
         </div>
       </div>

@@ -24,6 +24,11 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [viewState, setViewState] = useState<any>({
+    longitude: 39.8256,
+    latitude: 0.5360,
+    zoom: 6,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +49,7 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
       async (position) => {
         try {
           const { latitude, longitude, accuracy } = position.coords;
-          console.log('Got coordinates:', latitude, longitude, 'accuracy:', accuracy);
+          console.log('Got coordinates from browser geolocation:', { latitude, longitude, accuracy });
           
           // Reverse geocode to get address with more precise parameters
           const response = await fetch(
@@ -56,7 +61,7 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
           }
           
           const data = await response.json();
-          console.log('Mapbox response:', data);
+          console.log('Mapbox reverse geocode response features:', data.features && data.features.length ? data.features[0] : null);
           
           if (!data.features || data.features.length === 0) {
             throw new Error('No location data found');
@@ -72,6 +77,8 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
           
           console.log('Setting location:', locationData);
           setLocation(locationData);
+          // update map view to selected location
+          setViewState({ longitude: longitude, latitude: latitude, zoom: 16 });
           onLocationSelect(locationData);
         } catch (error) {
           console.error('Location error:', error);
@@ -122,20 +129,22 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
       }
       
       const data = await response.json();
+      console.log('Mapbox reverse geocode for coordinates:', { lat, lng, feature: data.features && data.features.length ? data.features[0] : null });
       
       if (!data.features || data.features.length === 0) {
         throw new Error('No location data found');
       }
-      
+
       const address = data.features[0]?.place_name || '';
-      
+
       const locationData = {
         address,
         latitude: lat,
         longitude: lng
       };
-      
+
       setLocation(locationData);
+      setViewState({ longitude: lng, latitude: lat, zoom: 16 });
       onLocationSelect(locationData);
     } catch (error) {
       console.error('Location error:', error);
@@ -207,10 +216,12 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
 
       if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
         // Reverse geocode to get address
+        console.log('Parsed coordinates from link:', { lat, lng });
         const response = await fetch(
           `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`
         );
         const data = await response.json();
+        console.log('Mapbox reverse geocode for parsed link:', data.features && data.features.length ? data.features[0] : null);
         const address = data.features[0]?.place_name || '';
         
         const locationData = {
@@ -290,11 +301,9 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
             </div>
           )}
           <Map
-            initialViewState={{
-              longitude: location?.longitude || 39.8256, // Default to Kenya center
-              latitude: location?.latitude || 0.5360,
-              zoom: location ? 16 : 6 // Zoom in more when location is selected
-            }}
+            // use viewState so the map recenters when user picks current location
+            viewState={viewState}
+            onMove={(evt) => setViewState(evt.viewState)}
             style={{ width: '100%', height: '100%' }}
             mapStyle="mapbox://styles/mapbox/streets-v12"
             mapboxAccessToken={MAPBOX_TOKEN}

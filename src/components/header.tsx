@@ -20,10 +20,8 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Center Content (Search Input) */}
-      <div className="flex-1 flex justify-center">
-        <Input placeholder="Search..." className="max-w-md" />
-      </div>
+      {/* Center Content (Search input removed per request) */}
+      <div className="flex-1" />
 
       {/* Right Content (Authentication) */}
       <div>

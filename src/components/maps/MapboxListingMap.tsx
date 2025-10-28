@@ -165,11 +165,13 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
   const [mounted, setMounted] = useState(false);
   
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [showPlaces, setShowPlaces] = useState(true);
   const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [routeGeoJSON, setRouteGeoJSON] = useState<any | null>(null);
-  const [isRouting, setIsRouting] = useState(false);
+  // Show/hide nearby points of interest
+  const [showPlaces, setShowPlaces] = useState<boolean>(true);
+  // Routing state for directions fetch
+  const [isRouting, setIsRouting] = useState<boolean>(false);
 
   async function fetchRouteGeoJSON(fromLng: number, fromLat: number, toLng: number, toLat: number) {
     // Use Mapbox Directions API to get a route (geojson)
@@ -201,7 +203,6 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
     setMounted(true);
 
     async function loadNearbyPlaces() {
-      setIsLoading(true);
       try {
         const places = await fetchNearbyPlaces(listingId);
         setNearbyPlaces(places);
@@ -309,7 +310,7 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
         {mounted ? (
           <Map
             ref={mapRef}
-            viewState={viewState}
+            initialViewState={viewState}
             style={{ width: '100%', height: '100%' }}
             mapStyle="mapbox://styles/mapbox/streets-v12"
             mapboxAccessToken={MAPBOX_TOKEN}
@@ -340,7 +341,7 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
               </Marker>
             ))}
 
-            {/* Selected place popup */}
+            {/* Selected place popup (heading removed per request) */}
             {selectedPlace && (
               <Popup
                 longitude={selectedPlace.coordinates[0]}
@@ -350,7 +351,6 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
                 offset={25}
               >
                 <div className="p-2">
-                  <h3 className="font-semibold">{selectedPlace.name}</h3>
                   <p className="text-sm text-gray-600">{formatDistance(selectedPlace.distanceKm)}</p>
                 </div>
               </Popup>
@@ -373,36 +373,35 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
           <div style={{ width: '100%', height: '100%' }} />
         )}
 
-        {/* Location Label */}
-        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg">
-          <h3 className="font-semibold text-gray-900">{name}</h3>
-          {address && <p className="text-sm text-gray-600 mt-1">{address}</p>}
-        </div>
-
-        {/* Points of Interest Toggle and Reset */}
-        <div className="absolute top-4 right-4 z-10 flex gap-2">
-          <Button
-            variant={showPlaces ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowPlaces(!showPlaces)}
-            className="font-medium shadow-lg"
-          >
-            Points of Interest
-          </Button>
-        </div>
+        {/* Location label removed per request */}
       </div>
 
       {/* Nearby Places List - clickable to fly the map to the place */}
       <div className="mt-4 p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {isLoading && (
-            <div className="text-sm text-gray-500">Loading nearby places...</div>
-          )}
-
-          {nearbyPlaces.map((place, idx) => (
-            <button
-              key={`${place.name}-${idx}`}
-              onClick={async () => {
+        {/* Use a fixed height container to prevent layout shift */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 min-h-[168px]">
+          {isLoading ? (
+            // Loading skeleton to maintain layout
+            <>
+              {[1,2,3].map(i => (
+                <div key={i} className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm animate-pulse">
+                  <div className="p-2 bg-gray-100 rounded-lg w-10 h-10"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="h-4 bg-gray-100 rounded w-20"></div>
+                      <div className="h-3 bg-gray-100 rounded w-12"></div>
+                    </div>
+                    <div className="h-3 bg-gray-100 rounded w-32"></div>
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : (
+            <>
+              {nearbyPlaces.map((place, idx) => (
+                <button
+                  key={`${place.name}-${idx}`}
+                  onClick={async () => {
                     const [lngP, latP] = place.coordinates;
                     setSelectedPlace(place);
 
@@ -450,18 +449,20 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
                       transitionInterpolator: FlyToInterpolator ? new FlyToInterpolator({ speed: 1.2 }) : undefined
                     }));
                   }}
-              className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm text-left hover:shadow-md"
-            >
-              <div className="p-2 bg-blue-50 rounded-lg">{place.icon}</div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium text-sm capitalize">{place.type}</p>
-                  <span className="text-xs text-gray-500">{formatDistance(place.distanceKm)}</span>
-                </div>
-                <p className="text-sm text-gray-600 truncate">{place.name}</p>
-              </div>
-            </button>
-          ))}
+                  className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm text-left hover:shadow-md"
+                >
+                  <div className="p-2 bg-blue-50 rounded-lg">{place.icon}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-sm capitalize">{place.type}</p>
+                      <span className="text-xs text-gray-500">{formatDistance(place.distanceKm)}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 truncate">{place.name}</p>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
         </div>
 
 

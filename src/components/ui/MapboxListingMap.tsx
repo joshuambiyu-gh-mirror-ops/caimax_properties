@@ -143,17 +143,7 @@ export default function MapboxListingMap({ lat, lng, name, address }: MapboxList
   return (
     <Card className="w-full overflow-hidden flex flex-col">
       <div className="relative flex-none">
-        {/* Points of Interest Toggle */}
-        <div className="absolute top-4 right-4 z-10">
-          <Button
-            variant={showPlaces ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowPlaces(!showPlaces)}
-            className="font-medium"
-          >
-            Points of Interest
-          </Button>
-        </div>
+        {/* Points-of-interest toggle removed per request */}
 
         <div className="w-full h-[400px]">
           <Map
@@ -179,7 +169,6 @@ export default function MapboxListingMap({ lat, lng, name, address }: MapboxList
               >
                 <div className="p-2">
                   <h3 className="font-semibold">{name}</h3>
-                  {address && <p className="text-xs text-gray-600 mt-1">{address}</p>}
                 </div>
               </Popup>
             </Marker>

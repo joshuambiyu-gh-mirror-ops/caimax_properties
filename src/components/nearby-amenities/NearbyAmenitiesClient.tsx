@@ -40,22 +40,24 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
   };
 
   return (
-    <div className="mt-4 bg-white/90 p-2 rounded-lg shadow-sm overflow-hidden">
+    <div className="mt-4 bg-white/90 p-2 rounded-lg shadow-sm">
       <h4 className="text-xs font-medium mb-1.5 px-1">Nearby Places</h4>
       {amenities.length === 0 ? (
         <p className="text-sm text-gray-500">No nearby amenities recorded.</p>
       ) : (
-        <div className="relative">
-          {/* Gradient fades for scroll hints */}
-          <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white/90 to-transparent pointer-events-none z-10" />
-          <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white/90 to-transparent pointer-events-none z-10" />
+        <div className="relative isolate overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none z-10">
+            <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white/90 to-transparent" />
+            <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white/90 to-transparent" />
+          </div>
           
-          <ul className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory scrollbar-none">
+          {/* Add padding-right to compensate for scrollbar width and prevent layout shift */}
+          <ul className="flex gap-2 overflow-x-auto pb-4 -mb-3 snap-x snap-mandatory scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300">
             {amenities.map((a) => (
-              <li key={a.id}>
+              <li key={a.id} className="flex-none">
                 <button
                   onClick={() => handleClick(a)}
-                  className="flex-none snap-center min-w-[100px] bg-white/50 backdrop-blur-sm rounded-lg p-2 ring-1 ring-black/5 hover:ring-black/10 hover:bg-white/80 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 group"
+                  className="snap-center min-w-[100px] bg-white/50 backdrop-blur-sm rounded-lg p-2 ring-1 ring-black/5 hover:ring-black/10 hover:bg-white/80 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 group"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <div className="p-1.5 bg-gray-50 rounded text-gray-600 group-hover:text-gray-900 transition-colors">
