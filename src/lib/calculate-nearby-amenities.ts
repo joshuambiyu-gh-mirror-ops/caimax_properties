@@ -85,3 +85,23 @@ export async function calculateAndStoreAmenities(listingId: string, latitude: nu
 
   return amenities;
 }
+
+// Reduce an array of amenity records (from DB) to the nearest one per `type`.
+export function getNearestPerType(amenitiesArray: Array<any>) {
+  if (!Array.isArray(amenitiesArray)) return [];
+
+  const map = new Map<string, any>();
+
+  for (const a of amenitiesArray) {
+    if (!a || !a.type) continue;
+    const existing = map.get(a.type);
+    // ensure numeric distance (stored in km) — convert to meters for display later if needed
+    const dist = Number(a.distance) ?? Infinity;
+    if (!existing || dist < Number(existing.distance)) {
+      map.set(a.type, a);
+    }
+  }
+
+  // return as array sorted by distance ascending
+  return Array.from(map.values()).sort((x: any, y: any) => Number(x.distance) - Number(y.distance));
+}

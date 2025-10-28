@@ -3,6 +3,8 @@ import { db } from '@/db';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ListingsMap, MapboxListingMap } from '@/components/maps';
+import { getNearestPerType } from '@/lib/calculate-nearby-amenities';
+import NearbyAmenitiesClient from '@/components/nearby-amenities/NearbyAmenitiesClient';
 import { getRelatedListings } from '@/actions/get-listings';
 import Carousel from '@/components/carousel';
 import { Button } from '@/components/ui/button';
@@ -44,7 +46,7 @@ export default async function Page({
   if (!resolvedParams?.slug) return notFound();
 
   const slug = resolvedParams.slug;
-  const listing = await db.listing.findUnique({
+    const listing = await db.listing.findUnique({
     where: { id: slug },
     include: { 
       images: { orderBy: { order: 'asc' } },
@@ -52,6 +54,9 @@ export default async function Page({
     },
   });
   if (!listing) return notFound();
+
+  // Build a nearest-per-type list from stored amenities for display under the map
+  const nearestPerType = getNearestPerType(listing.amenities || []);
 
   return (
     <div className="min-h-screen bg-gray-100/80">
@@ -167,20 +172,9 @@ export default async function Page({
                 />
               </div>
               
-              {/* Nearby Amenities */}
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(listing as any).amenities?.map((amenity: any) => (
-                  <div key={amenity.id} className="flex items-center gap-3 p-4 bg-white rounded-lg shadow-sm">
-                    <div className="p-2 bg-blue-50 rounded-lg">
-                      <MapPin className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium capitalize">{amenity.type}</p>
-                      <p className="text-sm text-gray-600">{amenity.name}</p>
-                      <p className="text-sm text-gray-500">{amenity.distance.toFixed(2)} km away</p>
-                    </div>
-                  </div>
-                ))}
+              {/* Client-rendered Nearby Amenities in a horizontal scrollable row */}
+              <div className="mt-6">
+                <NearbyAmenitiesClient amenities={nearestPerType} />
               </div>
             </div>
           </Card>
@@ -189,43 +183,7 @@ export default async function Page({
         {/* Right Column - Contact and Details */}
         <div className="space-y-6 lg:max-w-none">
           <div className="sticky top-24 w-full">
-            <Card className="overflow-hidden shadow-lg">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold mb-6">Express Interest</h3>
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Full Name</Label>
-                    <Input
-                      name="name"
-                      placeholder="Enter your full name"
-                      className="h-11"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Phone Number</Label>
-                    <Input
-                      name="phone"
-                      placeholder="Enter your phone number"
-                      type="tel"
-                      className="h-11"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Message</Label>
-                    <Textarea
-                      name="message"
-                      placeholder="Tell us about your interest in this property..."
-                      rows={4}
-                      className="resize-none"
-                    />
-                  </div>
-
-                  <Button size="lg" className="w-full">Submit Interest</Button>
-                </div>
-              </div>
-            </Card>
+            {/* Express Interest form removed */}
 
             {/* Property Description */}
             <Card className="overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">

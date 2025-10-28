@@ -1,0 +1,54 @@
+"use client";
+import React from 'react';
+import { Button } from '@/components/ui/button';
+
+interface Amenity {
+  id: string;
+  type: string;
+  name?: string;
+  distance?: number; // in km
+  latitude?: number;
+  longitude?: number;
+}
+
+export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenity[] }) {
+  const handleClick = (a: Amenity) => {
+    if (!a.latitude || !a.longitude) return;
+    // Dispatch a CustomEvent that the map listens for
+    const ev = new CustomEvent('caimax:flyToAmenity', {
+      detail: {
+        id: a.id,
+        latitude: a.latitude,
+        longitude: a.longitude,
+        name: a.name,
+        type: a.type,
+      },
+    });
+    window.dispatchEvent(ev);
+  };
+
+  return (
+    <div className="mt-4 bg-white/90 p-4 rounded-lg shadow-sm">
+      <h4 className="text-sm font-medium mb-2">Nearby Amenities</h4>
+      {amenities.length === 0 ? (
+        <p className="text-sm text-gray-500">No nearby amenities recorded.</p>
+      ) : (
+        <ul className="space-y-3">
+          {amenities.map((a) => (
+            <li key={a.id} className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">{a.name || a.type}</div>
+                <div className="text-xs text-gray-500">{a.type} • {Math.round((a.distance ?? 0) * 1000)} m</div>
+              </div>
+              <div>
+                <Button size="sm" onClick={() => handleClick(a)}>
+                  Show on map
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

@@ -1,12 +1,23 @@
 "use client";
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode, useRef } from 'react';
 import Map, { 
   Marker, 
   NavigationControl, 
   Popup,
   ViewState,
-  MarkerEvent
+  Source,
+  Layer
 } from 'react-map-gl';
+
+// Load FlyToInterpolator at runtime to avoid typing/exports mismatch across react-map-gl versions.
+// It's accessed only on the client (this component is a client component).
+let FlyToInterpolator: any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  FlyToInterpolator = require('react-map-gl').FlyToInterpolator;
+} catch (err) {
+  FlyToInterpolator = undefined;
+}
 import { MapPin, Store, Utensils, Bus, Hospital, Dumbbell, ChevronLeft, ChevronRight } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card } from "../ui/card";
@@ -135,12 +146,21 @@ async function fetchWithRetries(input: RequestInfo, init?: RequestInit, maxRetri
 }
 
 export default function MapboxListingMap({ lat, lng, listingId, name, address }: MapboxListingMapProps) {
-  const [viewState, setViewState] = useState({
+  const mapRef = useRef<any>(null);
+  const [viewState, setViewState] = useState<ViewState & {
+    width: number;
+    height: number;
+    padding: { top: number; right: number; bottom: number; left: number };
+  }>({
     longitude: lng,
     latitude: lat,
     zoom: 15,
     bearing: 0,
     pitch: 0,
+    // satisfy react-map-gl's ViewState & { width, height } requirement
+    width: 0,
+    height: 0,
+    padding: { top: 0, right: 0, bottom: 0, left: 0 },
   });
   const [mounted, setMounted] = useState(false);
   
@@ -148,6 +168,32 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
   const [showPlaces, setShowPlaces] = useState(true);
   const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [routeGeoJSON, setRouteGeoJSON] = useState<any | null>(null);
+  const [isRouting, setIsRouting] = useState(false);
+
+  async function fetchRouteGeoJSON(fromLng: number, fromLat: number, toLng: number, toLat: number) {
+    // Use Mapbox Directions API to get a route (geojson)
+    const token = typeof process !== 'undefined' && (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_DIRECTIONS_TOKEN) ? (process.env.NEXT_PUBLIC_MAPBOX_DIRECTIONS_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN) : MAPBOX_TOKEN;
+    const profile = 'driving';
+    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${fromLng},${fromLat};${toLng},${toLat}?geometries=geojson&overview=full&access_token=${token}`;
+    try {
+      setIsRouting(true);
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.warn('Directions API returned', res.status, res.statusText);
+        return null;
+      }
+      const json = await res.json();
+      const route = json?.routes?.[0];
+      if (!route || !route.geometry) return null;
+      return route.geometry; // GeoJSON geometry
+    } catch (err) {
+      console.error('Error fetching route from Directions API', err);
+      return null;
+    } finally {
+      setIsRouting(false);
+    }
+  }
 
   useEffect(() => {
     // Ensure Map is only rendered on the client after mount to avoid
@@ -171,17 +217,84 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
     }
   }, [lng, lat, showPlaces]);
 
+  // Listen for external "fly to" requests (from server-rendered list or other client widgets)
+  useEffect(() => {
+    async function onFlyTo(e: any) {
+      const d = e?.detail;
+      if (!d || typeof d.latitude !== 'number' || typeof d.longitude !== 'number') return;
+      const place: Place = {
+        type: d.type || 'restaurant',
+        name: d.name || d.id || 'Amenity',
+        coordinates: [d.longitude, d.latitude],
+        distanceKm: Number(((d.distance ?? 0) as number).toFixed?.(3) ?? 0),
+        icon: AMENITY_CATEGORIES.find(c => c.type === d.type)?.icon ?? AMENITY_CATEGORIES[0].icon
+      };
+
+      setSelectedPlace(place);
+
+      // Request a routed path from Mapbox Directions API and draw it
+      const geom = await fetchRouteGeoJSON(lng, lat, d.longitude, d.latitude);
+      if (geom && geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
+        setRouteGeoJSON({ type: 'Feature', geometry: geom, properties: {} });
+
+        // Fit map to route bounds if possible
+        try {
+          const mapboxMap = mapRef.current?.getMap?.();
+          if (mapboxMap) {
+            const coords = geom.coordinates as [number, number][];
+            const lons = coords.map(c => c[0]);
+            const lats = coords.map(c => c[1]);
+            const minLon = Math.min(...lons);
+            const maxLon = Math.max(...lons);
+            const minLat = Math.min(...lats);
+            const maxLat = Math.max(...lats);
+            mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 80, duration: 1200 });
+            return;
+          }
+        } catch (err) {
+          // fall back to flyTo
+        }
+      }
+
+      // fallback: just fly to the destination
+      try {
+        const mapboxMap = mapRef.current?.getMap?.();
+        if (mapboxMap && typeof mapboxMap.flyTo === 'function') {
+          mapboxMap.flyTo({ center: [d.longitude, d.latitude], zoom: Math.max(viewState.zoom ?? 15, 16), bearing: 0, pitch: 45, speed: 1.2, curve: 1.4 });
+          return;
+        }
+      } catch (err) {
+        // fallback to viewState transition
+      }
+
+      setViewState((prev: any) => ({
+        ...prev,
+        longitude: d.longitude,
+        latitude: d.latitude,
+        zoom: Math.max(prev?.zoom ?? 15, 16),
+        bearing: 0,
+        pitch: 45,
+        transitionDuration: 1200,
+        transitionInterpolator: FlyToInterpolator ? new FlyToInterpolator({ speed: 1.2 }) : undefined
+      }));
+    }
+
+    window.addEventListener('caimax:flyToAmenity', onFlyTo as EventListener);
+    return () => window.removeEventListener('caimax:flyToAmenity', onFlyTo as EventListener);
+  }, []);
+
   return (
     <Card className="w-full overflow-hidden">
       {/* Map Container */}
       <div className="w-full h-[500px]">
         {mounted ? (
           <Map
-            initialViewState={viewState}
+            ref={mapRef}
+            viewState={viewState}
             style={{ width: '100%', height: '100%' }}
             mapStyle="mapbox://styles/mapbox/streets-v12"
             mapboxAccessToken={MAPBOX_TOKEN}
-            onMove={evt => setViewState(evt.viewState)}
+            onMove={evt => setViewState(prev => ({ ...prev, ...evt.viewState }))}
           >
             {/* Main property marker */}
             <Marker
@@ -224,6 +337,17 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
               </Popup>
             )}
 
+            {/* Route line from listing to selected amenity */}
+            {routeGeoJSON && (
+              <Source id="route" type="geojson" data={routeGeoJSON}>
+                <Layer
+                  id="route-line"
+                  type="line"
+                  paint={{ 'line-color': '#2563eb', 'line-width': 4, 'line-opacity': 0.9 }}
+                />
+              </Source>
+            )}
+
             <NavigationControl position="top-right" />
           </Map>
         ) : (
@@ -249,29 +373,101 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
         </div>
       </div>
 
-      {/* Nearby Amenities Section */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm">
-        <div className="flex justify-between items-center px-4 py-2">
-          {AMENITY_CATEGORIES.map((category, index) => {
-            // Hardcoded distances for testing
-            const distance = [0.3, 0.5, 0.7, 1.2, 1.5][index];
-            
-            return (
-              <div
-                key={index}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100/50 transition-all cursor-pointer"
-                onClick={() => {}}
-              >
-                <div className="p-1.5 rounded-md bg-white/80 shadow-sm">
-                  {category.icon}
+      {/* Nearby Places List - clickable to fly the map to the place */}
+      <div className="mt-4">
+        <h4 className="text-sm font-semibold mb-2">Nearby Places</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {isLoading && (
+            <div className="text-sm text-gray-500">Loading nearby places...</div>
+          )}
+
+          {nearbyPlaces.map((place, idx) => (
+            <button
+              key={`${place.name}-${idx}`}
+              onClick={async () => {
+                    const [lngP, latP] = place.coordinates;
+                    setSelectedPlace(place);
+
+                    // Request routed path and draw it
+                    const geom = await fetchRouteGeoJSON(lng, lat, lngP, latP);
+                    if (geom && geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
+                      setRouteGeoJSON({ type: 'Feature', geometry: geom, properties: {} });
+                      try {
+                        const mapboxMap = mapRef.current?.getMap?.();
+                        if (mapboxMap) {
+                          const coords = geom.coordinates as [number, number][];
+                          const lons = coords.map(c => c[0]);
+                          const lats = coords.map(c => c[1]);
+                          const minLon = Math.min(...lons);
+                          const maxLon = Math.max(...lons);
+                          const minLat = Math.min(...lats);
+                          const maxLat = Math.max(...lats);
+                          mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 80, duration: 1200 });
+                          return;
+                        }
+                      } catch (err) {
+                        // fall through to fly
+                      }
+                    }
+
+                    // fallback: native flyTo or viewState
+                    try {
+                      const mapboxMap = mapRef.current?.getMap?.();
+                      if (mapboxMap && typeof mapboxMap.flyTo === 'function') {
+                        mapboxMap.flyTo({ center: [lngP, latP], zoom: Math.max(viewState.zoom ?? 15, 16), bearing: 0, pitch: 45, speed: 1.2, curve: 1.4 });
+                        return;
+                      }
+                    } catch (err) {
+                      // fallback
+                    }
+
+                    setViewState((prev: any) => ({
+                      ...prev,
+                      longitude: lngP,
+                      latitude: latP,
+                      zoom: Math.max(prev?.zoom ?? 15, 16),
+                      bearing: 0,
+                      pitch: 45,
+                      transitionDuration: 1200,
+                      transitionInterpolator: FlyToInterpolator ? new FlyToInterpolator({ speed: 1.2 }) : undefined
+                    }));
+                  }}
+              className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm text-left hover:shadow-md"
+            >
+              <div className="p-2 bg-blue-50 rounded-lg">{place.icon}</div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-sm capitalize">{place.type}</p>
+                  <span className="text-xs text-gray-500">{formatDistance(place.distanceKm)}</span>
                 </div>
-                <div>
-                  <p className="font-medium text-sm">{category.label}</p>
-                  <p className="text-xs text-gray-600">{formatDistance(distance)}</p>
-                </div>
+                <p className="text-sm text-gray-600 truncate">{place.name}</p>
               </div>
-            );
-          })}
+            </button>
+          ))}
+        </div>
+
+        {/* Back to listing button */}
+        <div className="mt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // animate back to listing location
+              setSelectedPlace(null);
+              setViewState((prev: any) => ({
+                ...prev,
+                longitude: lng,
+                latitude: lat,
+                zoom: 15,
+                bearing: 0,
+                pitch: 0,
+                transitionDuration: 800,
+                transitionInterpolator: FlyToInterpolator ? new FlyToInterpolator({ speed: 1.2 }) : undefined
+              }));
+            }}
+          >
+            Back to property
+          </Button>
         </div>
       </div>
     </Card>

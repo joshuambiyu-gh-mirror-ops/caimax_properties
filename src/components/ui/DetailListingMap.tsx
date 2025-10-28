@@ -45,7 +45,7 @@ export default function DetailListingMap({
           onMove={evt => setViewState(evt.viewState)}
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/mapbox/streets-v11"
-          className="w-full h-full"
+          style={{ width: '100%', height: '100%' }}
         >
           <Marker
             longitude={lng}
