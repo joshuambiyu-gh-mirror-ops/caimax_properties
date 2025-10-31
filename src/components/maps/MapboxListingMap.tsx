@@ -10,12 +10,11 @@ import Map, {
   Layer,
 } from 'react-map-gl';
 
-import { MapPin, Store, Utensils, Bus, Hospital, Dumbbell } from 'lucide-react';
+import { MapPin, Store, Utensils, Bus, Hospital, School } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Card } from "../ui/card";
 
 interface Place {
-  type: 'hospital' | 'restaurant' | 'bus' | 'supermarket' | 'gym';
+  type: 'hospital' | 'restaurant' | 'bus' | 'supermarket' | 'school';
   name: string;
   distanceKm: number;
   coordinates: [number, number];
@@ -35,12 +34,12 @@ const AMENITY_CATEGORIES = [
   { type: 'restaurant', query: 'restaurant', icon: <Utensils className="w-6 h-6 text-amber-700 hover:text-amber-800" />, label: 'Restaurant' },
   { type: 'bus', query: 'bus station', icon: <Bus className="w-6 h-6 text-green-600 hover:text-green-700" />, label: 'Bus Station' },
   { type: 'supermarket', query: 'supermarket', icon: <Store className="w-6 h-6 text-blue-500 hover:text-blue-700" />, label: 'Supermarket' },
-  { type: 'gym', query: 'gym', icon: <Dumbbell className="w-6 h-6 text-purple-500 hover:text-purple-700" />, label: 'Gym' }
+  { type: 'school', query: 'school', icon: <School className="w-6 h-6 text-yellow-600 hover:text-yellow-700" />, label: 'School' }
 ] as const;
 
 // Map DB amenity type strings to our Place.type union
 const mapAmenityType = (t: string): Place['type'] => {
-  switch (t) {
+  switch (t.toLowerCase()) {
     case 'bus_station':
       return 'bus';
     case 'hospital':
@@ -49,9 +48,13 @@ const mapAmenityType = (t: string): Place['type'] => {
       return 'restaurant';
     case 'supermarket':
       return 'supermarket';
-    case 'gym':
-      return 'gym';
+    case 'school':
+      return 'school';
     default:
+      // Check if the name contains 'school' to properly categorize schools
+      if (t.toLowerCase().includes('school')) {
+        return 'school';
+      }
       return 'restaurant';
   }
 };
@@ -82,15 +85,31 @@ const fetchNearbyPlaces = async (listingId: string): Promise<Place[]> => {
     const amenities = (json.amenities || []) as Array<AmenityResponse>;
 
     // Map DB amenities to Place[] shape
-    const places: Place[] = amenities.map(a => ({
-      type: mapAmenityType(a.type),
-      name: a.name,
-      coordinates: [a.longitude, a.latitude],
-      distanceKm: Number((a.distance ?? 0).toFixed(3)),
-      icon: AMENITY_CATEGORIES.find(c => c.query === a.type || c.type === a.type)?.icon ?? AMENITY_CATEGORIES[0].icon
-    }));
+    const places: Place[] = amenities.map(a => {
+      const type = mapAmenityType(a.type);
+      return {
+        type,
+        name: a.name,
+        coordinates: [a.longitude, a.latitude],
+        distanceKm: Number((a.distance ?? 0).toFixed(3)),
+        icon: AMENITY_CATEGORIES.find(c => c.query === type)?.icon ?? AMENITY_CATEGORIES[0].icon
+      };
+    });
 
-    return places.sort((x, y) => x.distanceKm - y.distanceKm);
+    // Remove duplicates by name, keeping the closest instance
+    const uniquePlaces = places.reduce((acc: Place[], current) => {
+      const existing = acc.find(p => p.name.toLowerCase() === current.name.toLowerCase());
+      if (!existing || existing.distanceKm > current.distanceKm) {
+        return [
+          ...acc.filter(p => p.name.toLowerCase() !== current.name.toLowerCase()),
+          current
+        ];
+      }
+      return acc;
+    }, []);
+
+    // Sort by distance
+    return uniquePlaces.sort((a, b) => a.distanceKm - b.distanceKm);
   } catch (error) {
     console.error('Error fetching amenities API:', error);
     return [];
@@ -120,7 +139,6 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
   
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   interface RouteGeoJSON {
     type: 'Feature';
     geometry: {
@@ -132,8 +150,6 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
   const [routeGeoJSON, setRouteGeoJSON] = useState<RouteGeoJSON | null>(null);
   // Show/hide nearby points of interest
   const showPlaces = true; // Always show places by default
-  // Routing state for directions fetch
-  const [isRouting, setIsRouting] = useState<boolean>(false);
 
   async function fetchRouteGeoJSON(fromLng: number, fromLat: number, toLng: number, toLat: number) {
     // Use Mapbox Directions API to get a route (geojson)
@@ -141,7 +157,6 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
     const profile = 'driving';
     const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${fromLng},${fromLat};${toLng},${toLat}?geometries=geojson&overview=full&access_token=${token}`;
     try {
-      setIsRouting(true);
       const res = await fetch(url);
       if (!res.ok) {
         console.warn('Directions API returned', res.status, res.statusText);
@@ -154,8 +169,6 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
     } catch (error) {
       console.error('Error fetching route from Directions API:', error);
       return null;
-    } finally {
-      setIsRouting(false);
     }
   }
 
@@ -170,8 +183,6 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
         setNearbyPlaces(places);
       } catch (error) {
         console.error('Error loading nearby places:', error);
-      } finally {
-        setIsLoading(false);
       }
     }
 
@@ -285,10 +296,10 @@ interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
     };
   }, [lat, lng, viewState.zoom]);
 
-    return (
-    <Card className="w-full overflow-hidden">
-      {/* Map Container */}
-      <div className="w-full h-[500px]">
+  return (
+  <div className="w-full max-w-full">
+      {/* Map Container: aggressively limit width/height for mobile */}
+  <div className="w-full h-[320px] sm:h-[420px] md:h-[500px] px-0 box-border max-w-full">
         {mounted ? (
           <Map
             ref={mapRef}
@@ -354,116 +365,7 @@ interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
         ) : (
           <div style={{ width: '100%', height: '100%' }} />
         )}
-
-        {/* Location label removed per request */}
       </div>
-
-      {/* Nearby Places List - clickable to fly the map to the place */}
-      <div className="mt-4 p-4">
-        {/* Use a fixed height container to prevent layout shift */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 min-h-[168px]">
-          {isLoading ? (
-            // Loading skeleton to maintain layout
-            <>
-              {[1,2,3].map(i => (
-                <div key={i} className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm animate-pulse">
-                  <div className="p-2 bg-gray-100 rounded-lg w-10 h-10"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="h-4 bg-gray-100 rounded w-20"></div>
-                      <div className="h-3 bg-gray-100 rounded w-12"></div>
-                    </div>
-                    <div className="h-3 bg-gray-100 rounded w-32"></div>
-                  </div>
-                </div>
-              ))}
-            </>
-          ) : (
-            <>
-              {nearbyPlaces.map((place, idx) => (
-                <button
-                  key={`${place.name}-${idx}`}
-                  onMouseDown={(e) => e.preventDefault()} /* prevent first-click auto-scroll */
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-                      e.preventDefault();
-                      /* Let onClick handle the action via keyboard activation */
-                    }
-                  }}
-                  onClick={async () => {
-                    const [lngP, latP] = place.coordinates;
-                    setSelectedPlace(place);
-
-                    // Request routed path and draw it
-                    const geom = await fetchRouteGeoJSON(lng, lat, lngP, latP);
-                    if (geom && geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
-                      setRouteGeoJSON({ 
-                        type: 'Feature', 
-                        geometry: geom, 
-                        properties: {
-                          // Add any relevant properties here
-                          timestamp: Date.now()
-                        } 
-                      });
-                      try {
-                        const mapboxMap = mapRef.current?.getMap?.();
-                        if (mapboxMap) {
-                          const coords = geom.coordinates as [number, number][];
-                          const lons = coords.map(c => c[0]);
-                          const lats = coords.map(c => c[1]);
-                          const minLon = Math.min(...lons);
-                          const maxLon = Math.max(...lons);
-                          const minLat = Math.min(...lats);
-                          const maxLat = Math.max(...lats);
-                          mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 80, duration: 1200 });
-                          return;
-                        }
-                      } catch (error) {
-                        console.warn('Error fitting map bounds:', error);
-                        // fall through to fly
-                      }
-                    }
-
-                    // fallback: native flyTo or viewState
-                    try {
-                      const mapboxMap = mapRef.current?.getMap?.();
-                      if (mapboxMap && typeof mapboxMap.flyTo === 'function') {
-                        mapboxMap.flyTo({ center: [lngP, latP], zoom: Math.max(viewState.zoom ?? 15, 16), bearing: 0, pitch: 45, speed: 1.2, curve: 1.4 });
-                        return;
-                      }
-    } catch (error) {
-      console.warn('Error during flyTo:', error);
-      // fallback to basic transition
-    }                    setViewState((prev) => ({
-                      ...prev,
-                      longitude: lngP,
-                      latitude: latP,
-                      zoom: Math.max(prev?.zoom ?? 15, 16),
-                      bearing: 0,
-                      pitch: 45,
-                      transitionDuration: 1200
-                    }));
-                  }}
-                  className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm text-left hover:shadow-md"
-                >
-                  <div className="p-2 bg-blue-50 rounded-lg">{place.icon}</div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm capitalize">{place.type}</p>
-                      <span className="text-xs text-gray-500">
-                        {isRouting ? 'Calculating route...' : formatDistance(place.distanceKm)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 truncate">{place.name}</p>
-                  </div>
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-
-
-      </div>
-    </Card>
+    </div>
   );
 }

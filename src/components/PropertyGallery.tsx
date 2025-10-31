@@ -60,7 +60,7 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
   return (
     <div className="space-y-4">
       {/* Main Gallery */}
-      <div className="shadow-md rounded-lg relative aspect-[4/3] sm:aspect-[16/9] cursor-pointer hover:shadow-red-500/50 group">
+      <div className="shadow-md rounded-lg relative aspect-[16/9] sm:aspect-[16/9] md:aspect-[4/3] cursor-pointer hover:shadow-red-500/50 group max-h-[48vh] sm:max-h-none overflow-hidden">
         <div className="relative w-full rounded-lg h-full hover:translate-z-60 transition-transform transition-duration-300" onClick={() => setShowFullscreen(true)}>
           <Image
             src={images[currentIndex]}
@@ -72,13 +72,14 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
           />
 
           {/* Navigation Controls */}
+          {/* Hide the large overlay nav controls on very small viewports to reduce clutter */}
           <div className="absolute inset-0 flex items-center justify-between px-2 sm:px-4">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 prev();
               }}
-              className="bg-white/90 rounded-full p-1.5 sm:p-2 shadow-lg hover:bg-white transition-colors"
+              className="hidden sm:inline-flex bg-white/90 rounded-full p-1.5 sm:p-2 shadow-lg hover:bg-white transition-colors"
             >
               <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
             </button>
@@ -87,7 +88,7 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
                 e.stopPropagation();
                 next();
               }}
-              className="bg-white/90 rounded-full p-1.5 sm:p-2 shadow-lg hover:bg-white transition-colors"
+              className="hidden sm:inline-flex bg-white/90 rounded-full p-1.5 sm:p-2 shadow-lg hover:bg-white transition-colors"
             >
               <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
             </button>
@@ -122,7 +123,7 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
             key={index}
             onClick={() => setCurrentIndex(index)}
             className={cn(
-              "relative flex-shrink-0 w-20 h-14 sm:w-24 sm:h-16 rounded overflow-hidden",
+              "relative flex-shrink-0 w-16 h-12 sm:w-24 sm:h-16 rounded overflow-hidden",
               currentIndex === index && "ring-2 ring-blue-500"
             )}
             whileHover={{ scale: 1.05 }}
@@ -208,7 +209,7 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
                   key={index}
                   onClick={() => setCurrentIndex(index)}
                   className={cn(
-                    "relative w-16 h-12 rounded overflow-hidden",
+                    "relative w-12 h-8 sm:w-16 sm:h-12 rounded overflow-hidden",
                     currentIndex === index && "ring-2 ring-white"
                   )}
                   whileHover={{ scale: 1.05 }}

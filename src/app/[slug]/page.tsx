@@ -55,10 +55,10 @@ export default async function Page({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-100/80">
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+  <div className="max-w-7xl mx-4 sm:mx-auto py-8 px-0 sm:px-6 lg:px-8">
       {/* Header Section with Breadcrumbs */}
       <div className="mb-8">
-        <div className="flex items-center text-sm text-gray-500 mb-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm ring-1 ring-black/5 w-fit">
+        <div className="flex flex-wrap items-center text-sm text-gray-500 mb-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm ring-1 ring-black/5 max-w-full">
           <Link href="/" className="hover:text-gray-900">Home</Link>
           <span className="mx-2">/</span>
           <span>Property Details</span>
@@ -88,7 +88,10 @@ export default async function Page({ params }: PageProps) {
         <div className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8">
           {/* Image Carousel */}
           <div className="rounded-lg sm:rounded-xl overflow-hidden shadow-lg sm:shadow-xl bg-white ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
-            <PropertyGallery images={listing.images.map(img => img.url)} />
+            {/* Constrain gallery height on small devices so it remains usable and doesn't push content too far */}
+            <div className="w-full min-h-[220px] sm:min-h-[360px]">
+              <PropertyGallery images={listing.images.map(img => img.url)} />
+            </div>
           </div>
 
           {/* Property Features */}
@@ -152,7 +155,7 @@ export default async function Page({ params }: PageProps) {
           </Card>
 
           {/* Location Map */}
-          <div className="rounded-lg sm:rounded-xl overflow-hidden">
+          <div className="overflow-hidden">
             <MapSection 
                 listingId={listing.id}
                 lat={listing.latitude}
@@ -164,14 +167,14 @@ export default async function Page({ params }: PageProps) {
 
         {/* Right Column - Contact and Details */}
         <div className="space-y-6 lg:max-w-none">
-      <div className="sticky top-24 w-full">
+      <div className="w-full lg:sticky lg:top-24">
         {/* Price card (right column) */}
         {typeof listing.price === 'number' && (
           <Card className="mb-4 sm:mb-6">
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               <div className="text-center space-y-2 sm:space-y-3">
                 <div className="text-sm sm:text-base text-gray-500 font-medium">Price</div>
-                <div className="text-3xl sm:text-4xl font-bold text-gray-900">{formatPrice(listing.price)}</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">{formatPrice(listing.price)}</div>
               </div>
               
               <div className="pt-3 sm:pt-4 border-t border-gray-200">
@@ -235,7 +238,7 @@ export default async function Page({ params }: PageProps) {
         </div>
       </div>
       {/* Related Listings */}
-      <div className="mt-16 pb-16">
+  <div className="mt-12 pb-16">
         <div className="flex items-center justify-between mb-8 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg ring-1 ring-black/5">
           <h2 className="text-2xl font-bold text-gray-900">Similar Properties You May Like</h2>
           <Button variant="outline" className="gap-2">

@@ -39,8 +39,8 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
   };
 
   return (
-    <div className="mt-3 sm:mt-4 bg-white/90 p-1.5 sm:p-2 rounded-lg shadow-sm">
-      <h4 className="text-[11px] sm:text-xs font-medium mb-1.5 px-1">Nearby Places</h4>
+    <div className="px-3 py-2 bg-white/95 rounded-t-lg shadow-md border-t border-gray-100">
+      <h4 className="text-sm sm:text-base font-medium mb-2">Nearby Places</h4>
       {amenities.length === 0 ? (
         <p className="text-xs sm:text-sm text-gray-500">No nearby amenities recorded.</p>
       ) : (
@@ -50,10 +50,10 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
             <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white/90 to-transparent" />
           </div>
           
-          {/* Add padding-right to compensate for scrollbar width and prevent layout shift */}
-          <ul className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-3 sm:pb-4 -mb-3 snap-x snap-mandatory scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300">
+          {/* On mobile allow wrapping to multiple rows; on sm+ keep horizontal scroll */}
+          <ul className="flex flex-wrap gap-2 pb-2 snap-x snap-mandatory scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 sm:flex-nowrap sm:overflow-x-auto">
             {amenities.map((a) => (
-              <li key={a.id} className="flex-none">
+              <li key={a.id} className="flex-none mb-2 sm:mb-0">
                 <button
                   onClick={() => handleClick(a)}
                   onMouseDown={(e) => e.preventDefault()} /* prevent browser auto-scroll on first click */
@@ -63,16 +63,16 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
                       handleClick(a);
                     }
                   }}
-                  className="snap-center min-w-[90px] sm:min-w-[100px] bg-white/50 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 ring-1 ring-black/5 hover:ring-black/10 hover:bg-white/80 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 group touch-pan-x"
+                  className="snap-center min-w-[110px] sm:min-w-[140px] bg-white backdrop-blur-sm rounded-lg p-2 ring-1 ring-black/5 hover:ring-black/10 hover:bg-white/95 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 group touch-pan-x"
                   type="button"
                 >
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="p-1 sm:p-1.5 bg-gray-50 rounded text-gray-600 group-hover:text-gray-900 transition-colors">
+                    <div className="p-1.5 bg-gray-50 rounded text-gray-600 group-hover:text-gray-900 transition-colors">
                       {AMENITY_ICONS[a.type] || <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />}
                     </div>
-                    <div className="flex-1 text-left">
-                      <div className="text-[10px] sm:text-xs font-medium text-gray-900 truncate w-full max-w-[100px] sm:max-w-[120px]">{a.name || a.type}</div>
-                      <div className="text-[9px] sm:text-[10px] text-gray-500">{Math.round((a.distance ?? 0) * 1000)}m</div>
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="text-xs sm:text-sm font-medium text-gray-900 truncate">{a.name || a.type}</div>
+                      <div className="text-[11px] text-gray-500">{Math.round((a.distance ?? 0) * 1000)}m</div>
                     </div>
                   </div>
                 </button>

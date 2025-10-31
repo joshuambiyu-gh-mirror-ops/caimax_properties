@@ -48,7 +48,15 @@ export async function calculateAndStoreAmenities(listingId: string, latitude: nu
   for (const type of AMENITIES) {
     console.log('\n🔎 Searching for amenity type:', type);
     
-    const query = `[out:json];(node["amenity"="${type}"](around:${radius},${latitude},${longitude}););out;`;
+    // Build query based on amenity type
+    let query = '';
+    if (type === 'school') {
+      query = `[out:json];(node["amenity"="school"](around:${radius},${latitude},${longitude}););out;`;
+    } else if (type === 'restaurant') {
+      query = `[out:json];(node["amenity"="restaurant"](around:${radius},${latitude},${longitude}););out;`;
+    } else {
+      query = `[out:json];(node["amenity"="${type}"](around:${radius},${latitude},${longitude}););out;`;
+    }
     console.log('📤 Sending Overpass query:', query);
 
     try {
