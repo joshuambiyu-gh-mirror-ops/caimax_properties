@@ -86,16 +86,14 @@ export default async function Page({ params }: PageProps) {
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {/* Left Column - Images and Details */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8">
-          {/* Image Carousel */}
-          <div className="rounded-lg sm:rounded-xl overflow-hidden shadow-lg sm:shadow-xl bg-white ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
-            {/* Constrain gallery height on small devices so it remains usable and doesn't push content too far */}
-            <div className="w-full min-h-[220px] sm:min-h-[360px]">
+          {/* Image Carousel - Full width override */}
+          <div className="-mx-4 sm:mx-0 rounded-none sm:rounded-xl overflow-hidden shadow-lg sm:shadow-xl bg-white ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            {/* Larger gallery that breaks out of the normal container on mobile */}
+            <div className="w-screen sm:w-full min-h-[280px] sm:min-h-[420px] md:min-h-[480px]">
               <PropertyGallery images={listing.images.map(img => img.url)} />
             </div>
-          </div>
-
-          {/* Property Features */}
-          <Card className="overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+          </div>          {/* Property Features */}
+          <Card className="w-[calc(100vw-2rem)] sm:w-full overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-6">Property Features</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
@@ -185,10 +183,12 @@ export default async function Page({ params }: PageProps) {
           </Card>
         )}
 
-        <IntentionForm listingId={listing.id} listingName={listing.name} listingImageUrl={listing.images?.[0]?.url ?? null} />
+        <div className="w-[calc(100vw-2rem)] sm:w-full">
+          <IntentionForm listingId={listing.id} listingName={listing.name} listingImageUrl={listing.images?.[0]?.url ?? null} />
+        </div>
 
             {/* Description + Details (merged) */}
-            <Card className="overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <Card className="w-[calc(100vw-2rem)] sm:w-full overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
               <div className="p-6">
                 <h3 className="text-xl font-semibold mb-4">Property Description</h3>
                 <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
@@ -221,7 +221,7 @@ export default async function Page({ params }: PageProps) {
             </Card>
             {/* Facilities Card */}
             {Array.isArray(listing.facilities) && listing.facilities.length > 0 && (
-              <Card className="mt-4 sm:mt-6 overflow-hidden shadow-lg">
+              <Card className="w-[calc(100vw-2rem)] sm:w-full mt-4 sm:mt-6 overflow-hidden shadow-lg">
                 <div className="p-4 sm:p-6">
                   <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Facilities</h3>
                   <div className="flex flex-wrap gap-1.5 sm:gap-2">

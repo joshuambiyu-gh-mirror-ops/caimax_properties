@@ -277,6 +277,20 @@ interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
     function onResetView() {
       setSelectedPlace(null);
       setRouteGeoJSON(null);
+
+      // Prefer using the Mapbox API to animate the map back to the listing
+      try {
+        const mapboxMap = mapRef.current?.getMap?.();
+        if (mapboxMap && typeof mapboxMap.flyTo === 'function') {
+          mapboxMap.flyTo({ center: [lng, lat], zoom: 15, bearing: 0, pitch: 0, duration: 800 });
+          return;
+        }
+      } catch (error) {
+        // fall back to updating viewState if mapbox map isn't available
+        console.warn('Mapbox not ready for flyTo; falling back to state update', error);
+      }
+
+      // fallback: update the local viewState (works if Map is controlled)
       setViewState((prev) => ({
         ...prev,
         longitude: lng,
