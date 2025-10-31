@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { calculateAndStoreAmenities } from "@/lib/calculate-nearby-amenities";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { Listing } from "@prisma/client";
 
 interface CreateListingData {
   listingName: string;
@@ -56,7 +56,7 @@ export async function createListing(data: CreateListingData) {
     
     // Add retry logic for database operations
     let retries = 3;
-    let listing: any;
+    let listing: Listing | undefined;
     
     while (retries > 0) {
       try {

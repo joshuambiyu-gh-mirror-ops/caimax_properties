@@ -42,9 +42,9 @@ export default function IntentionForm({ listingId, listingName, listingImageUrl 
       }
       setSuccess('Thanks — your interest has been sent to the agent.');
       setMessage('');
-    } catch (err: any) {
-      console.error('Intention submit error:', err);
-      setError(err?.message || 'An error occurred');
+    } catch (error: unknown) {
+      console.error('Intention submit error:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setLoading(false);
     }

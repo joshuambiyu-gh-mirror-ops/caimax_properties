@@ -3,7 +3,6 @@ import Image from "next/image"; // Import Image component
 
 import { cn } from "@/lib/utils";
 import HeaderAuth from "@/components/header-auth";
-import { Input } from "./ui/input";
 
 export default function Header() {
   return (

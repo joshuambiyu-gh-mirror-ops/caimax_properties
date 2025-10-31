@@ -2,6 +2,33 @@ import { db } from '@/db';
 
 export type AmenityType = 'hospital' | 'restaurant' | 'bus_station' | 'supermarket' | 'gym' | 'school' | 'park' | 'police';
 
+interface OverpassTags {
+  name?: string;
+  'addr:housenumber'?: string;
+  'addr:street'?: string;
+  [key: string]: string | undefined;
+}
+
+interface OverpassElement {
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: {
+    lat: number;
+    lon: number;
+  };
+  tags?: OverpassTags;
+}
+
+interface ProcessedAmenity {
+  type: AmenityType;
+  name: string;
+  distance: number;
+  latitude: number;
+  longitude: number;
+  listingId?: string;
+}
+
 // Map our amenity types to OSM tags
 const osmAmenityMapping: Record<AmenityType, string> = {
   hospital: 'amenity=hospital',
@@ -64,7 +91,7 @@ class OverpassClient {
     return this.endpoints[this.currentEndpoint];
   }
 
-  async fetchAmenities(query: string, maxRetries: number, timeout: number): Promise<any[]> {
+  async fetchAmenities(query: string, maxRetries: number, timeout: number): Promise<OverpassElement[]> {
     let lastError: Error | null = null;
     let attempt = 0;
 
@@ -112,15 +139,15 @@ class OverpassClient {
           throw new Error('Invalid response format');
         }
 
-        return data.elements.filter((el: any) => 
+        return data.elements.filter((el: OverpassElement) => 
           el.tags && (el.lat !== undefined || el.center?.lat !== undefined)
         );
 
-      } catch (error: any) {
+      } catch (error) {
         clearTimeout(timeoutId);
-        lastError = error;
+        lastError = error instanceof Error ? error : new Error(String(error));
         
-        if (error.name === 'AbortError') {
+        if (error instanceof Error && error.name === 'AbortError') {
           console.log('[Overpass] Request timeout, rotating endpoint');
           this.rotateEndpoint();
         }
@@ -161,12 +188,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export async function fetchNearbyAmenities({
   latitude,
   longitude,
-  prisma,
   config = {}
 }: {
   latitude: number;
   longitude: number;
-  prisma: any;
   config?: FetchConfig;
 }) {
   const {
@@ -182,7 +207,7 @@ export async function fetchNearbyAmenities({
   const propertyType = "Any"; // Default to wider amenity set
   const amenityTypes = getAmenityTypes(propertyType);
   const maxPerType = Number(process.env.OVERPASS_MAX_PER_TYPE ?? '5');
-  const amenities: any[] = [];
+  const amenities: ProcessedAmenity[] = [];
 
   for (const type of amenityTypes) {
     let radius = initialRadius;
@@ -264,14 +289,13 @@ export async function fetchAndStoreAmenities(listingId: string) {
       id: listing.id,
       latitude: listing.latitude,
       longitude: listing.longitude,
-      propertyType: (listing as any).propertyType
+      propertyType: listing.propertyType
     });
 
     // Fetch amenities
     const amenities = await fetchNearbyAmenities({
       latitude: listing.latitude,
       longitude: listing.longitude,
-      prisma: db,
       config: {
         maxRetries: 3,
         initialRadius: 1000,
@@ -303,7 +327,7 @@ export async function fetchAndStoreAmenities(listingId: string) {
       // Update lastAmenityCheck timestamp
       db.listing.update({
         where: { id: listingId },
-        data: { lastAmenityCheck: new Date() } as any
+        data: { lastAmenityCheck: new Date() }
       })
     ]);
 

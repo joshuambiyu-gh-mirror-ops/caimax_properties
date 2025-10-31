@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useTransition, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import FormButton from "./form-button";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
@@ -122,6 +123,8 @@ export default function UpLoad() {
       return;
     }
 
+    const userId = session.user.id;
+
     startTransition(async () => {
       // Upload each image to the S3 upload API
       const uploadedImageKeys: string[] = [];
@@ -153,7 +156,7 @@ export default function UpLoad() {
         longitude: Number(formData.longitude),
         price: formData.price ? Number(formData.price) : null,
         images: uploadedImageKeys,
-        userId: (session.user as any)?.id,
+        userId: userId,
       });
 
       if (result.error) {
@@ -213,11 +216,20 @@ export default function UpLoad() {
                 key={index}
                 className={`relative aspect-video ${index === 0 ? 'border-2 border-blue-500' : ''}`}
               >
-                <img
-                  src={url}
-                  alt={index === 0 ? "Thumbnail" : `Image ${index}`}
-                  className="rounded-lg object-cover w-full h-full"
-                />
+                <div className="w-full h-full">
+                  {/* 
+                    For local previews, we need to use unoptimized prop since these are blob URLs.
+                    This is an exception to the usual Next.js Image optimization pattern.
+                  */}
+                  <Image
+                    src={url}
+                    alt={index === 0 ? "Thumbnail" : `Image ${index}`}
+                    className="rounded-lg object-cover"
+                    fill
+                    unoptimized
+                    priority={index === 0}
+                  />
+                </div>
                 {index === 0 && (
                   <span className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded-md text-xs">
                     Thumbnail

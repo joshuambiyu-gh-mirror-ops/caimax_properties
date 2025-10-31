@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "react-feather";
 
@@ -14,8 +14,8 @@ export default function Carousel({
 }) {
   const [curr, setCurr] = useState(0);
 
-  const prev = () => setCurr((curr) => (curr === 0 ? images.length - 1 : curr - 1));
-  const next = () => setCurr((curr) => (curr === images.length - 1 ? 0 : curr + 1));
+  const prev = useCallback(() => setCurr((c) => (c === 0 ? images.length - 1 : c - 1)), [images.length]);
+  const next = useCallback(() => setCurr((c) => (c === images.length - 1 ? 0 : c + 1)), [images.length]);
 
   useEffect(() => {
     if (!autoSlide) return;

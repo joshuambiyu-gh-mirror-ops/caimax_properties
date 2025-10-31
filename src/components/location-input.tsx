@@ -139,7 +139,7 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
     
     if (!match) return null;
     
-    const [_, degrees, minutes = "0", seconds = "0", , direction] = match;
+  const [, degrees, minutes = "0", seconds = "0", , direction] = match;
     let dd = Number(degrees) + Number(minutes)/60 + Number(seconds)/(60*60);
     
     if (direction === 'S' || direction === 'W') {
@@ -243,7 +243,7 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
           let lng: number | null = null;
 
           // Check URL parameters for coordinates
-          for (const [key, value] of params.entries()) {
+          for (const [, value] of params.entries()) {
             // Look for coordinates in any parameter
             if (value?.includes(',')) {
               const coords = value.split(',').map(Number);

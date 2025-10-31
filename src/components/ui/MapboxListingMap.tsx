@@ -4,13 +4,11 @@ import Map, {
   Marker, 
   NavigationControl, 
   Popup,
-  ViewState,
-  MarkerEvent
+  ViewState
 } from 'react-map-gl';
 import { MapPin, School, Coffee, Bus, Hospital } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card } from "./card";
-import { Button } from "./button";
 
 interface Place {
   type: 'school' | 'coffee' | 'bus' | 'medical';
@@ -18,6 +16,25 @@ interface Place {
   distanceKm: number;
   coordinates: [number, number];
   icon: ReactNode;
+}
+
+interface AmenityResponse {
+  type: string;
+  name: string;
+  longitude: number;
+  latitude: number;
+  distance: number;
+}
+
+interface MapboxFeature {
+  text: string;
+  center: [number, number];
+}
+
+interface MarkerClickEvent {
+  originalEvent?: {
+    stopPropagation?: () => void;
+  };
 }
 
 interface MapboxListingMapProps {
@@ -68,9 +85,9 @@ const fetchNearbyPlaces = async (centerLng: number, centerLat: number, listingId
         return [];
       }
       const json = await res.json();
-      const amenities = (json.amenities || []) as Array<any>;
+      const amenities = (json.amenities || []) as AmenityResponse[];
       return amenities.map(a => ({
-        type: (a.type === 'bus_station' ? 'bus' : (a.type as any)) as Place['type'],
+        type: (a.type === 'bus_station' ? 'bus' : a.type) as Place['type'],
         name: a.name,
         coordinates: [Number(a.longitude), Number(a.latitude)] as [number, number],
         distanceKm: Number((a.distance ?? 0).toFixed(3)),
@@ -89,7 +106,7 @@ const fetchNearbyPlaces = async (centerLng: number, centerLat: number, listingId
       const response = await fetch(url);
       const data = await response.json();
       
-      data.features.forEach((feature: any) => {
+      data.features.forEach((feature: MapboxFeature) => {
         const [lng, lat] = feature.center;
         places.push({
           type: category.type as Place['type'],
@@ -107,7 +124,7 @@ const fetchNearbyPlaces = async (centerLng: number, centerLat: number, listingId
   return places.sort((a, b) => a.distanceKm - b.distanceKm);
 };
 
-export default function MapboxListingMap({ lat, lng, name, address }: MapboxListingMapProps) {
+export default function MapboxListingMap({ lat, lng, name }: MapboxListingMapProps) {
   const [viewState, setViewState] = useState<Omit<ViewState, 'padding'> & { padding: { top: number; bottom: number; left: number; right: number } }>({
     longitude: lng,
     latitude: lat,
@@ -118,27 +135,20 @@ export default function MapboxListingMap({ lat, lng, name, address }: MapboxList
   });
   
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [showPlaces, setShowPlaces] = useState(true);
   const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     async function loadNearbyPlaces() {
-      setIsLoading(true);
       try {
         const places = await fetchNearbyPlaces(lng, lat);
         setNearbyPlaces(places);
       } catch (error) {
         console.error('Error loading nearby places:', error);
-      } finally {
-        setIsLoading(false);
       }
     }
 
-    if (showPlaces) {
-      loadNearbyPlaces();
-    }
-  }, [lng, lat, showPlaces]);
+    loadNearbyPlaces();
+  }, [lng, lat]);
 
   return (
     <Card className="w-full overflow-hidden flex flex-col">
@@ -174,13 +184,13 @@ export default function MapboxListingMap({ lat, lng, name, address }: MapboxList
             </Marker>
 
             {/* Nearby places markers */}
-            {showPlaces && nearbyPlaces.map((place, index) => (
+            {nearbyPlaces.map((place, index) => (
               <Marker
                 key={index}
                 longitude={place.coordinates[0]}
                 latitude={place.coordinates[1]}
                 anchor="bottom"
-                onClick={(e: any) => {
+                onClick={(e: MarkerClickEvent) => {
                   e?.originalEvent?.stopPropagation?.();
                   setSelectedPlace(selectedPlace?.name === place.name ? null : place);
                 }}
@@ -211,7 +221,7 @@ export default function MapboxListingMap({ lat, lng, name, address }: MapboxList
       </div>
 
       {/* Nearby Places List */}
-      {showPlaces && (
+      {nearbyPlaces.length > 0 && (
         <div className="flex-none border-t">
           <div className="p-6">
             <h3 className="font-semibold mb-4 text-lg">Nearby Places</h3>

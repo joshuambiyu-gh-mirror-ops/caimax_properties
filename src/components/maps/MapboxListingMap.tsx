@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, ReactNode, useRef } from 'react';
+import type { MapRef } from 'react-map-gl';
 import Map, {
   Marker,
   NavigationControl,
@@ -9,19 +10,9 @@ import Map, {
   Layer,
 } from 'react-map-gl';
 
-// Load FlyToInterpolator at runtime to avoid typing/exports mismatch across react-map-gl versions.
-// It's accessed only on the client (this component is a client component).
-let FlyToInterpolator: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  FlyToInterpolator = require('react-map-gl').FlyToInterpolator;
-} catch (err) {
-  FlyToInterpolator = undefined;
-}
-import { MapPin, Store, Utensils, Bus, Hospital, Dumbbell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Store, Utensils, Bus, Hospital, Dumbbell } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card } from "../ui/card";
-import { Button } from "../ui/button";
 
 interface Place {
   type: 'hospital' | 'restaurant' | 'bus' | 'supermarket' | 'gym';
@@ -35,8 +26,6 @@ interface MapboxListingMapProps {
   lat: number;
   lng: number;
   listingId: string;
-  name: string;
-  address?: string;
 }
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoibWJpeXUiLCJhIjoiY203aXZ0cGQxMDBsdzJqc2EwdXB6ZngxciJ9.tY4trIwdOSdm1_Z0EXq-CQ";
@@ -49,18 +38,22 @@ const AMENITY_CATEGORIES = [
   { type: 'gym', query: 'gym', icon: <Dumbbell className="w-6 h-6 text-purple-500 hover:text-purple-700" />, label: 'Gym' }
 ] as const;
 
-const getDistance = (fromLat: number, fromLng: number, toLat: number, toLng: number): number => {
-  // Haversine formula for great-circle distance (returns kilometers)
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = toRad(toLat - fromLat);
-  const dLng = toRad(toLng - fromLng);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Number((R * c).toFixed(3)); // keep 3 decimals for precision
+// Map DB amenity type strings to our Place.type union
+const mapAmenityType = (t: string): Place['type'] => {
+  switch (t) {
+    case 'bus_station':
+      return 'bus';
+    case 'hospital':
+      return 'hospital';
+    case 'restaurant':
+      return 'restaurant';
+    case 'supermarket':
+      return 'supermarket';
+    case 'gym':
+      return 'gym';
+    default:
+      return 'restaurant';
+  }
 };
 
 // Format distance to be more readable
@@ -71,14 +64,6 @@ const formatDistance = (distance: number): string => {
   return `${distance.toFixed(1)}km away`;
 };
 
-const OSM_TAGS: Record<string, string> = {
-  hospital: 'amenity=hospital',
-  restaurant: 'amenity=restaurant',
-  'bus station': 'highway=bus_stop',
-  supermarket: 'shop=supermarket',
-  gym: 'leisure=fitness_centre'
-};
-
 const fetchNearbyPlaces = async (listingId: string): Promise<Place[]> => {
   try {
     const res = await fetch(`/api/amenities/${listingId}`);
@@ -87,11 +72,18 @@ const fetchNearbyPlaces = async (listingId: string): Promise<Place[]> => {
       return [];
     }
     const json = await res.json();
-    const amenities = (json.amenities || []) as Array<any>;
+    interface AmenityResponse {
+      type: string;
+      name: string;
+      longitude: number;
+      latitude: number;
+      distance?: number;
+    }
+    const amenities = (json.amenities || []) as Array<AmenityResponse>;
 
     // Map DB amenities to Place[] shape
     const places: Place[] = amenities.map(a => ({
-      type: (a.type === 'bus_station' ? 'bus' : (a.type as any)) as Place['type'],
+      type: mapAmenityType(a.type),
       name: a.name,
       coordinates: [a.longitude, a.latitude],
       distanceKm: Number((a.distance ?? 0).toFixed(3)),
@@ -99,54 +91,16 @@ const fetchNearbyPlaces = async (listingId: string): Promise<Place[]> => {
     }));
 
     return places.sort((x, y) => x.distanceKm - y.distanceKm);
-  } catch (err) {
-    console.error('Error fetching amenities API:', err);
+  } catch (error) {
+    console.error('Error fetching amenities API:', error);
     return [];
   }
 };
 
-// Helper: fetch with retries and exponential backoff for 429 Too Many Requests
-async function fetchWithRetries(input: RequestInfo, init?: RequestInit, maxRetries = 3): Promise<Response> {
-  const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const res = await fetch(input, init);
 
-      if (res.status === 429) {
-        // Honor Retry-After if provided
-        const retryAfter = res.headers.get('retry-after');
-        const waitMs = retryAfter ? Number(retryAfter) * 1000 : Math.pow(2, attempt) * 500 + Math.round(Math.random() * 200);
-        console.warn(`Overpass 429 received, attempt ${attempt + 1}/${maxRetries}. Waiting ${waitMs}ms before retry.`);
-        if (attempt === maxRetries) return res; // return last response to let caller handle
-        await sleep(waitMs);
-        continue;
-      }
-
-      // For 5xx, optionally retry as well
-      if (res.status >= 500 && attempt < maxRetries) {
-        const waitMs = Math.pow(2, attempt) * 500 + Math.round(Math.random() * 200);
-        console.warn(`Overpass server error ${res.status}, attempt ${attempt + 1}/${maxRetries}. Waiting ${waitMs}ms before retry.`);
-        await sleep(waitMs);
-        continue;
-      }
-
-      return res;
-    } catch (err) {
-      // network error, retry
-      if (attempt === maxRetries) throw err;
-      const waitMs = Math.pow(2, attempt) * 500 + Math.round(Math.random() * 200);
-      console.warn(`Network error, attempt ${attempt + 1}/${maxRetries}. Waiting ${waitMs}ms before retry.`, err);
-      await sleep(waitMs);
-    }
-  }
-
-  // Should never reach here
-  throw new Error('fetchWithRetries exhausted retries');
-}
-
-export default function MapboxListingMap({ lat, lng, listingId, name, address }: MapboxListingMapProps) {
-  const mapRef = useRef<any>(null);
+export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingMapProps) {
+  const mapRef = useRef<MapRef>(null);
   const [viewState, setViewState] = useState<ViewState & {
     width: number;
     height: number;
@@ -167,9 +121,17 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [routeGeoJSON, setRouteGeoJSON] = useState<any | null>(null);
+  interface RouteGeoJSON {
+    type: 'Feature';
+    geometry: {
+      type: 'LineString';
+      coordinates: [number, number][];
+    };
+    properties: Record<string, unknown>;
+  }
+  const [routeGeoJSON, setRouteGeoJSON] = useState<RouteGeoJSON | null>(null);
   // Show/hide nearby points of interest
-  const [showPlaces, setShowPlaces] = useState<boolean>(true);
+  const showPlaces = true; // Always show places by default
   // Routing state for directions fetch
   const [isRouting, setIsRouting] = useState<boolean>(false);
 
@@ -189,8 +151,8 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
       const route = json?.routes?.[0];
       if (!route || !route.geometry) return null;
       return route.geometry; // GeoJSON geometry
-    } catch (err) {
-      console.error('Error fetching route from Directions API', err);
+    } catch (error) {
+      console.error('Error fetching route from Directions API:', error);
       return null;
     } finally {
       setIsRouting(false);
@@ -216,15 +178,30 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
     if (showPlaces) {
       loadNearbyPlaces();
     }
-  }, [lng, lat, showPlaces]);
+  }, [lng, lat, showPlaces, listingId]);
 
   // Listen for external "fly to" and "reset view" requests
   useEffect(() => {
-    async function onFlyTo(e: any) {
+    interface FlyToEventDetail {
+      latitude: number;
+      longitude: number;
+      type?: string;
+      name?: string;
+      id?: string;
+      distance?: number;
+    }
+
+    // Re-exporting the custom event type with additional properties
+interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
+  // Add any custom event properties here if needed in the future
+  readonly timeStamp: number;
+}
+
+    async function onFlyTo(e: FlyToEvent) {
       const d = e?.detail;
       if (!d || typeof d.latitude !== 'number' || typeof d.longitude !== 'number') return;
       const place: Place = {
-        type: d.type || 'restaurant',
+        type: (d.type as Place['type']) || 'restaurant',
         name: d.name || d.id || 'Amenity',
         coordinates: [d.longitude, d.latitude],
         distanceKm: Number(((d.distance ?? 0) as number).toFixed?.(3) ?? 0),
@@ -236,12 +213,19 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
       // Request a routed path from Mapbox Directions API and draw it
       const geom = await fetchRouteGeoJSON(lng, lat, d.longitude, d.latitude);
       if (geom && geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
-        setRouteGeoJSON({ type: 'Feature', geometry: geom, properties: {} });
+        setRouteGeoJSON({ 
+          type: 'Feature', 
+          geometry: geom, 
+          properties: {
+            // Add any relevant properties here
+            timestamp: Date.now()
+          } 
+        });
 
         // Fit map to route bounds if possible
         try {
           const mapboxMap = mapRef.current?.getMap?.();
-          if (mapboxMap) {
+            if (mapboxMap) {
             const coords = geom.coordinates as [number, number][];
             const lons = coords.map(c => c[0]);
             const lats = coords.map(c => c[1]);
@@ -252,7 +236,8 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
             mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 80, duration: 1200 });
             return;
           }
-        } catch (err) {
+        } catch (error) {
+          console.warn('Error fitting bounds:', error);
           // fall back to flyTo
         }
       }
@@ -264,44 +249,41 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
           mapboxMap.flyTo({ center: [d.longitude, d.latitude], zoom: Math.max(viewState.zoom ?? 15, 16), bearing: 0, pitch: 45, speed: 1.2, curve: 1.4 });
           return;
         }
-      } catch (err) {
-        // fallback to viewState transition
-      }
-
-      setViewState((prev: any) => ({
+    } catch (error) {
+      console.warn('Error during map transition:', error);
+      // fallback to viewState transition
+    }      setViewState((prev) => ({
         ...prev,
         longitude: d.longitude,
         latitude: d.latitude,
         zoom: Math.max(prev?.zoom ?? 15, 16),
         bearing: 0,
         pitch: 45,
-        transitionDuration: 1200,
-        transitionInterpolator: FlyToInterpolator ? new FlyToInterpolator({ speed: 1.2 }) : undefined
+        transitionDuration: 1200
       }));
     }
 
     function onResetView() {
       setSelectedPlace(null);
       setRouteGeoJSON(null);
-      setViewState((prev: any) => ({
+      setViewState((prev) => ({
         ...prev,
         longitude: lng,
         latitude: lat,
         zoom: 15,
         bearing: 0,
         pitch: 0,
-        transitionDuration: 800,
-        transitionInterpolator: FlyToInterpolator ? new FlyToInterpolator({ speed: 1.2 }) : undefined
+        transitionDuration: 800
       }));
     }
 
-    window.addEventListener('caimax:flyToAmenity', onFlyTo as EventListener);
+    window.addEventListener('caimax:flyToAmenity', onFlyTo as unknown as EventListener);
     window.addEventListener('caimax:resetMapView', onResetView as EventListener);
     return () => {
-      window.removeEventListener('caimax:flyToAmenity', onFlyTo as EventListener);
+      window.removeEventListener('caimax:flyToAmenity', onFlyTo as unknown as EventListener);
       window.removeEventListener('caimax:resetMapView', onResetView as EventListener);
     };
-  }, []);
+  }, [lat, lng, viewState.zoom]);
 
     return (
     <Card className="w-full overflow-hidden">
@@ -332,7 +314,7 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
                 longitude={place.coordinates[0]}
                 latitude={place.coordinates[1]}
                 anchor="bottom"
-                onClick={(e: any) => {
+                onClick={(e: { originalEvent?: Event }) => {
                   e?.originalEvent?.stopPropagation?.();
                   setSelectedPlace(selectedPlace?.name === place.name ? null : place);
                 }}
@@ -415,7 +397,14 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
                     // Request routed path and draw it
                     const geom = await fetchRouteGeoJSON(lng, lat, lngP, latP);
                     if (geom && geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
-                      setRouteGeoJSON({ type: 'Feature', geometry: geom, properties: {} });
+                      setRouteGeoJSON({ 
+                        type: 'Feature', 
+                        geometry: geom, 
+                        properties: {
+                          // Add any relevant properties here
+                          timestamp: Date.now()
+                        } 
+                      });
                       try {
                         const mapboxMap = mapRef.current?.getMap?.();
                         if (mapboxMap) {
@@ -429,7 +418,8 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
                           mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 80, duration: 1200 });
                           return;
                         }
-                      } catch (err) {
+                      } catch (error) {
+                        console.warn('Error fitting map bounds:', error);
                         // fall through to fly
                       }
                     }
@@ -441,19 +431,17 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
                         mapboxMap.flyTo({ center: [lngP, latP], zoom: Math.max(viewState.zoom ?? 15, 16), bearing: 0, pitch: 45, speed: 1.2, curve: 1.4 });
                         return;
                       }
-                    } catch (err) {
-                      // fallback
-                    }
-
-                    setViewState((prev: any) => ({
+    } catch (error) {
+      console.warn('Error during flyTo:', error);
+      // fallback to basic transition
+    }                    setViewState((prev) => ({
                       ...prev,
                       longitude: lngP,
                       latitude: latP,
                       zoom: Math.max(prev?.zoom ?? 15, 16),
                       bearing: 0,
                       pitch: 45,
-                      transitionDuration: 1200,
-                      transitionInterpolator: FlyToInterpolator ? new FlyToInterpolator({ speed: 1.2 }) : undefined
+                      transitionDuration: 1200
                     }));
                   }}
                   className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm text-left hover:shadow-md"
@@ -462,7 +450,9 @@ export default function MapboxListingMap({ lat, lng, listingId, name, address }:
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <p className="font-medium text-sm capitalize">{place.type}</p>
-                      <span className="text-xs text-gray-500">{formatDistance(place.distanceKm)}</span>
+                      <span className="text-xs text-gray-500">
+                        {isRouting ? 'Calculating route...' : formatDistance(place.distanceKm)}
+                      </span>
                     </div>
                     <p className="text-sm text-gray-600 truncate">{place.name}</p>
                   </div>

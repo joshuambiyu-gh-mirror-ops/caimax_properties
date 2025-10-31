@@ -1,5 +1,4 @@
 import { db } from '@/db';
-import { fetchAndStoreAmenities } from '@/lib/fetch-amenities';
 import { NextResponse } from 'next/server';
 
 export const revalidate = 2592000; // 30 days in seconds
@@ -12,23 +11,26 @@ export async function GET() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const listings = await db.listing.findMany({
-      where: ( {
+      where: {
         OR: [
           { lastAmenityCheck: null },
           { lastAmenityCheck: { lt: thirtyDaysAgo } }
         ]
-      } as any ),
+      },
       select: { id: true }
     });
 
     // Enqueue refresh jobs instead of running them inline. This avoids
     // exhausting DB connections and spreads work over the queue worker.
     const { enqueueAmenityRefresh } = await import('@/lib/amenity-queue');
-    const enqueued = listings.map(l => enqueueAmenityRefresh(l.id));
-    const results = { total: listings.length, enqueued };
+    // Enqueue all refresh jobs and wait for the enqueue operations to finish.
+    // The worker will process the jobs asynchronously.
+    const enqueued = await Promise.all(listings.map((l) => enqueueAmenityRefresh(l.id)));
+    const results = { total: listings.length, enqueued: enqueued.length };
     return NextResponse.json(results);
-  } catch (error) {
-    console.error('Revalidation error:', error);
+  } catch (error: unknown) {
+    if (error instanceof Error) console.error('Revalidation error:', error.message);
+    else console.error('Revalidation error:', error);
     return NextResponse.json(
       { error: 'Failed to revalidate amenities' },
       { status: 500 }

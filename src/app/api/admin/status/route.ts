@@ -10,11 +10,10 @@ export async function GET() {
       await db.$queryRaw`SELECT 1`;
       dbConnected = true;
       // Try to get active connections (Postgres-specific)
-      const result: any = await db.$queryRaw`SELECT count(*)::int as cnt FROM pg_stat_activity WHERE datname = current_database()`;
-      if (Array.isArray(result) && result.length) {
-        activeConnections = result[0].cnt ?? null;
-      } else if (result && typeof result.cnt === 'number') {
-        activeConnections = result.cnt;
+      type PgConnCount = { cnt: number };
+      const result = await db.$queryRaw<PgConnCount[]>`SELECT count(*)::int as cnt FROM pg_stat_activity WHERE datname = current_database()`;
+      if (result?.[0]?.cnt !== undefined) {
+        activeConnections = result[0].cnt;
       }
     } catch (err) {
       console.error('DB health check failed:', err);

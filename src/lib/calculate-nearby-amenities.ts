@@ -1,6 +1,28 @@
 import { db } from '@/db';
+import { AmenityType } from '@/types/listing';
 
-const AMENITIES = ["hospital", "school", "supermarket", "restaurant", "police"];
+interface OverpassElement {
+  lat: number;
+  lon: number;
+  tags?: {
+    name?: string;
+    [key: string]: string | undefined;
+  };
+}
+
+export interface ProcessedAmenity {
+  id: string;
+  name: string;
+  type: AmenityType;
+  distance: number;
+  latitude: number;
+  longitude: number;
+  listingId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const AMENITIES: AmenityType[] = ["hospital", "school", "supermarket", "restaurant", "police"];
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371; // Earth radius (km)
@@ -45,7 +67,7 @@ export async function calculateAndStoreAmenities(listingId: string, latitude: nu
       
       // Map and sort all results
       const places = data.elements
-        ?.map((el: any) => {
+        ?.map((el: OverpassElement) => {
           const distance = Number(getDistance(latitude, longitude, el.lat, el.lon).toFixed(2));
           console.log('📍 Found:', el.tags?.name || 'Unknown', '-', distance, 'km away');
           return {
@@ -57,7 +79,7 @@ export async function calculateAndStoreAmenities(listingId: string, latitude: nu
             listingId
           };
         })
-        .sort((a: any, b: any) => a.distance - b.distance);
+        .sort((a: ProcessedAmenity, b: ProcessedAmenity) => a.distance - b.distance);
 
       // Get only the closest one
       if (places?.[0]) {
@@ -87,21 +109,21 @@ export async function calculateAndStoreAmenities(listingId: string, latitude: nu
 }
 
 // Reduce an array of amenity records (from DB) to the nearest one per `type`.
-export function getNearestPerType(amenitiesArray: Array<any>) {
+export function getNearestPerType(amenitiesArray: Array<ProcessedAmenity>) {
   if (!Array.isArray(amenitiesArray)) return [];
 
-  const map = new Map<string, any>();
+  const map = new Map<AmenityType, ProcessedAmenity>();
 
   for (const a of amenitiesArray) {
     if (!a || !a.type) continue;
-    const existing = map.get(a.type);
+    const existing = map.get(a.type as AmenityType);
     // ensure numeric distance (stored in km) — convert to meters for display later if needed
     const dist = Number(a.distance) ?? Infinity;
     if (!existing || dist < Number(existing.distance)) {
-      map.set(a.type, a);
+      map.set(a.type as AmenityType, a);
     }
   }
 
   // return as array sorted by distance ascending
-  return Array.from(map.values()).sort((x: any, y: any) => Number(x.distance) - Number(y.distance));
+  return Array.from(map.values()).sort((x: ProcessedAmenity, y: ProcessedAmenity) => Number(x.distance) - Number(y.distance));
 }

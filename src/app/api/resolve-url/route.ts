@@ -26,8 +26,8 @@ export async function POST(req: Request) {
     try {
       const text = await res.text();
       bodySnippet = text.slice(0, 20000); // limit size
-    } catch (e) {
-      // ignore
+    } catch {
+      // ignore errors reading the response body
     }
 
     return NextResponse.json({ finalUrl, bodySnippet });

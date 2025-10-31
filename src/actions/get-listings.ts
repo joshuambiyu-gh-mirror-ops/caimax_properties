@@ -10,6 +10,8 @@ export interface ListingWithImages {
   bedroomCount: number;
   location: string;
   description: string;
+  latitude: number;
+  longitude: number;
   images: {
     url: string;
     order: number;

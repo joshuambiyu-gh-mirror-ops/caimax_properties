@@ -1,10 +1,17 @@
 import { db } from '@/db';
 import { fetchAndStoreAmenities } from '@/lib/fetch-amenities';
 import { NextResponse } from 'next/server';
+import type { amenities } from '@prisma/client';
+
+type AmenityResponse = Pick<amenities, 'id' | 'type' | 'name' | 'distance' | 'latitude' | 'longitude'>;
 
 export async function GET(
   request: Request,
-  { params }: { params: { listingId: string } }
+  // Next's generated route types expect `params` to be a promise-like value
+  // (Promise<any>). Declare it as such to satisfy the type checker. At
+  // runtime `await params` will work whether the framework supplies a
+  // promise-like object or a plain object.
+  { params }: { params: Promise<{ listingId: string }> }
 ) {
   try {
     // `params` can be a promise-like value in some Next runtimes — await it first.
@@ -25,7 +32,7 @@ export async function GET(
 
     if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
 
-    let amenities = [] as any[];
+    let amenities: AmenityResponse[] = [];
     try {
       amenities = await db.amenities.findMany({
         where: { listingId },
@@ -50,9 +57,15 @@ export async function GET(
   } catch (error) {
     // Provide more context in logs and include the stack in non-production
     // environments to help debugging. Return a safe 500 with minimal info.
-    console.error('GET /api/amenities error:', error, (error as any)?.stack);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('GET /api/amenities error:', error, errorStack);
     const isProd = process.env.NODE_ENV === 'production';
-    const body = isProd ? { error: 'Internal error' } : { error: (error as any)?.message || 'Internal error', stack: (error as any)?.stack };
+    const body = isProd 
+      ? { error: 'Internal error' } 
+      : { 
+          error: error instanceof Error ? error.message : 'Internal error', 
+          stack: errorStack 
+        };
     return NextResponse.json(body, { status: 500 });
   }
 }

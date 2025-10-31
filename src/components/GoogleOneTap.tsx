@@ -3,17 +3,40 @@
 import { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 
+// Minimal types for the Google Identity Services objects we use here.
+interface GooglePromptNotification {
+  isNotDisplayed?: () => boolean;
+  getNotDisplayedReason?: () => string;
+  isSkippedMoment?: () => boolean;
+  getSkippedReason?: () => string;
+  isDismissedMoment?: () => boolean;
+  getDismissedReason?: () => string;
+}
+
 declare global {
   interface Window {
-    google?: any;
+    google?: {
+      accounts?: {
+        id?: {
+          initialize: (opts: {
+            client_id?: string | undefined;
+            auto_select?: boolean | undefined;
+            cancel_on_tap_outside?: boolean | undefined;
+            callback: (resp: { credential?: string }) => void;
+          }) => void;
+          prompt: (cb?: (notification: GooglePromptNotification) => void) => Promise<unknown> | undefined;
+          cancel: () => void;
+        };
+      };
+    };
   }
 }
 
 export default function GoogleOneTap() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [hasAttempted, setHasAttempted] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
   // Debug session state
   // Only reset hasAttempted if status transitions from authenticated to unauthenticated
@@ -84,18 +107,18 @@ export default function GoogleOneTap() {
           callback: handleCredentialResponse,
         });
 
-        const promptResult = window.google.accounts.id.prompt((notification: any) => {
+  const promptResult = window.google.accounts.id.prompt((notification: GooglePromptNotification) => {
           try {
-            if (notification.isNotDisplayed()) {
-              console.debug("[GoogleOneTap] Not displayed:", notification.getNotDisplayedReason());
-              if (notification.getNotDisplayedReason() === 'browser_not_supported') {
+            if (typeof notification.isNotDisplayed === 'function' && notification.isNotDisplayed()) {
+              console.debug("[GoogleOneTap] Not displayed:", typeof notification.getNotDisplayedReason === 'function' ? notification.getNotDisplayedReason() : undefined);
+              if (typeof notification.getNotDisplayedReason === 'function' && notification.getNotDisplayedReason() === 'browser_not_supported') {
                 setHasAttempted(true); // Prevent further attempts if browser not supported
               }
-            } else if (notification.isSkippedMoment()) {
-              console.debug("[GoogleOneTap] Skipped:", notification.getSkippedReason());
+            } else if (typeof notification.isSkippedMoment === 'function' && notification.isSkippedMoment()) {
+              console.debug("[GoogleOneTap] Skipped:", typeof notification.getSkippedReason === 'function' ? notification.getSkippedReason() : undefined);
               setHasAttempted(true);
-            } else if (notification.isDismissedMoment()) {
-              console.debug("[GoogleOneTap] Dismissed:", notification.getDismissedReason());
+            } else if (typeof notification.isDismissedMoment === 'function' && notification.isDismissedMoment()) {
+              console.debug("[GoogleOneTap] Dismissed:", typeof notification.getDismissedReason === 'function' ? notification.getDismissedReason() : undefined);
               setHasAttempted(true);
             } else {
               console.debug("[GoogleOneTap] Prompt state:", notification);
@@ -112,10 +135,15 @@ export default function GoogleOneTap() {
 
         // Some browsers/environments may have prompt return undefined instead of a Promise.
         // Only call .catch if the return value is promise-like.
+        // Helper to detect promise-like promptResult without using `any`.
+        const isPromiseLike = (v: unknown): v is Promise<unknown> => {
+          return !!v && typeof (v as Promise<unknown>)['catch'] === 'function';
+        };
+
         try {
-          if (promptResult && typeof (promptResult as any).catch === 'function') {
-            (promptResult as any).catch((error: Error) => {
-              if (error.name === 'AbortError') {
+          if (promptResult && isPromiseLike(promptResult)) {
+            promptResult.catch((error: unknown) => {
+              if (error instanceof Error && error.name === 'AbortError') {
                 console.debug("[GoogleOneTap] Prompt aborted - this is normal during cleanup");
               } else {
                 console.error("[GoogleOneTap] Failed to prompt:", error);
@@ -135,9 +163,9 @@ export default function GoogleOneTap() {
       }
     }
 
-    async function handleCredentialResponse(response: any) {
+    async function handleCredentialResponse(response: unknown) {
       console.log('[GoogleOneTap] Received credential response:', response);
-      const idToken = response?.credential;
+      const idToken = (response as { credential?: string } | null)?.credential;
       if (!idToken) {
         console.error('[GoogleOneTap] No credential in response');
         setError('No credential received');

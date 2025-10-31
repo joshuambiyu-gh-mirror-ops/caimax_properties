@@ -3,13 +3,11 @@ import { useState } from 'react';
 import Map, { Marker, NavigationControl, ViewState } from 'react-map-gl';
 import { MapPin } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Button } from '@/components/ui/button';
 import { Ribbon } from '@/components/ui/ribbon';
-import { Input } from './ui/input';
 import SearchBar from './ui/SearchBar';
 import type { ListingWithImages } from '@/actions/get-listings';
 
-interface MapProps {
+export interface MapProps {
   listings?: ListingWithImages[];
   search: string;
   setSearch: (s: string) => void;
@@ -60,10 +58,10 @@ export default function ListingsMap({ listings = [], search, setSearch }: MapPro
           mapboxAccessToken="pk.eyJ1IjoibWJpeXUiLCJhIjoiY203aXZ0cGQxMDBsdzJqc2EwdXB6ZngxciJ9.tY4trIwdOSdm1_Z0EXq-CQ"
         >
           {listings
-            .filter((listing: any) =>
+            .filter((listing) =>
               typeof listing.longitude === 'number' && typeof listing.latitude === 'number'
             )
-            .map((listing: any) => (
+            .map((listing) => (
               <Marker
                 key={listing.id}
                 longitude={listing.longitude}
