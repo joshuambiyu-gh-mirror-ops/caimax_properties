@@ -1,11 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['caimax-bucket.s3.eu-north-1.amazonaws.com'],
+    domains: ['caimax-bucket.s3.eu-north-1.amazonaws.com', 'images.unsplash.com'],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'caimax-bucket.s3.eu-north-1.amazonaws.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
         port: '',
         pathname: '/**',
       },

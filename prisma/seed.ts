@@ -1,101 +1,136 @@
 import { PrismaClient } from '@prisma/client';
+import { generateListings } from './seed-data';
+import { uploadImageToS3FromUrl } from './seed-utils';
 
 const prisma = new PrismaClient();
 
+import { fetchNearbyAmenities } from '../src/lib/fetch-amenities';
+
+// Function to fetch real amenities data
+async function getAmenities(listingId: string, latitude: number, longitude: number) {
+  try {
+    const amenities = await fetchNearbyAmenities({
+      latitude,
+      longitude,
+      config: {
+        maxRetries: 3,
+        initialRadius: 1000,
+        maxRadius: 3000,
+        radiusStep: 1000,
+        batchDelay: 2000,
+      }
+    });
+
+    // Add listingId to each amenity
+    return amenities.map(amenity => ({
+      ...amenity,
+      listingId
+    }));
+  } catch (error) {
+    console.error(`Error fetching amenities for listing ${listingId}:`, error);
+    return []; // Return empty array if fetch fails
+  }
+}
+
 async function main() {
+  console.log('\n=== Starting Database Seed ===');
+  
   // Create a dummy user first since listings reference users
+  console.log('\n👤 Creating admin user...');
   const dummyUser = await prisma.user.upsert({
-    where: { email: "dummy@example.com" },
+    where: { email: "admin@caimax.com" },
     update: {},
     create: {
-      email: "dummy@example.com",
-      name: "Dummy User",
-      onboarded: false,
+      email: "admin@caimax.com",
+      name: "Admin User",
+      role: "ADMIN",
+      onboarded: true,
     },
   });
+  console.log('✓ Admin user created/updated');
 
-  // Sample listings data
-  const listings = [
-    {
-      name: "Modern Downtown Apartment",
-      footage: 850,
-      bathroomCount: 1,
-      bedroomCount: 2,
-      location: "Downtown Nairobi",
-      latitude: -1.2864,
-      longitude: 36.8172,
-      description: "A stylish apartment in the heart of Nairobi with great city views.",
-      userId: dummyUser.id,
-      images: [
-        { url: "v1234567890/sample1.jpg", order: 1 },
-        { url: "v1234567890/sample2.jpg", order: 2 }
-      ]
-    },
-    {
-      name: "Spacious Family Home",
-      footage: 2200,
-      bathroomCount: 3,
-      bedroomCount: 4,
-      location: "Karen, Nairobi",
-      latitude: -1.3207,
-      longitude: 36.7073,
-      description: "Perfect family home with a large garden and modern amenities.",
-      userId: dummyUser.id,
-      images: [
-        { url: "v1234567890/sample3.jpg", order: 1 },
-        { url: "v1234567890/sample4.jpg", order: 2 }
-      ]
-    },
-    {
-      name: "Cozy Studio Apartment",
-      footage: 450,
-      bathroomCount: 1,
-      bedroomCount: 1,
-      location: "Westlands, Nairobi",
-      latitude: -1.2630,
-      longitude: 36.8065,
-      description: "Compact and efficient studio perfect for young professionals.",
-      userId: dummyUser.id,
-      images: [
-        { url: "v1234567890/sample5.jpg", order: 1 }
-      ]
-    },
-    {
-      name: "Luxury Villa",
-      footage: 3500,
-      bathroomCount: 4,
-      bedroomCount: 5,
-      location: "Kilimani, Nairobi",
-      latitude: -1.2921,
-      longitude: 36.8219,
-      description: "Exclusive villa with swimming pool and premium finishes.",
-      userId: dummyUser.id,
-      images: [
-        { url: "v1234567890/sample6.jpg", order: 1 },
-        { url: "v1234567890/sample7.jpg", order: 2 },
-        { url: "v1234567890/sample8.jpg", order: 3 }
-      ]
-    }
-  ];
+  // Generate listings with our seed data
+  console.log('\n📋 Generating listing data...');
+  const listingsToCreate = generateListings(dummyUser.id);
+  console.log(`✓ Generated ${listingsToCreate.length} listings in memory`);
 
-  for (const listingData of listings) {
+  console.log('\n🏗️ Creating listings in database...');
+  
+  let totalImages = 0;
+  listingsToCreate.forEach(listing => {
+    totalImages += listing.images.length;
+  });
+  
+  // Create listings and their related data
+  let createdCount = 0;
+  for (const listingData of listingsToCreate) {
     const { images, ...listingInfo } = listingData;
 
-    await prisma.listing.create({
+    // Upload images to S3 first
+    console.log(`\n[${++createdCount}/${listingsToCreate.length}] Processing listing: ${listingData.name}`);
+    console.log(`  📤 Uploading ${images.length} images to S3...`);
+    
+    const s3Images = await Promise.all(
+      images.map(async (image) => ({
+        ...image,
+        url: await uploadImageToS3FromUrl(image.url)
+      }))
+    );
+    
+    // Create the listing with S3 URLs
+    console.log(`  💾 Creating listing in database...`);
+    const listing = await prisma.listing.create({
       data: {
         ...listingInfo,
         images: {
-          create: images
+          create: s3Images
         }
       }
     });
+    console.log(`✓ Created listing: ${listing.name}`);
+    console.log(`  Location: ${listing.location}`);
+    console.log(`  Type: ${listing.propertyType}`);
+    console.log(`  Images: ${images.length}`);
+    console.log(`  Price: ${listing.price} KES`);
+
+    // Fetch and create real amenities for this listing
+    console.log(`\n  🔍 Fetching amenities near ${listing.location}...`);
+    const amenities = await getAmenities(listing.id, listing.latitude, listing.longitude);
+    
+    if (amenities.length > 0) {
+      console.log(`  Found ${amenities.length} amenities nearby:`);
+      const amenityTypes = [...new Set(amenities.map(a => a.type))];
+      amenityTypes.forEach(type => {
+        const count = amenities.filter(a => a.type === type).length;
+        console.log(`    - ${count} ${type}(s)`);
+      });
+
+      // Create amenities in batches to avoid overwhelming the database
+      console.log('  💾 Saving amenities to database...');
+      await prisma.$transaction(
+        amenities.map((amenity: any) =>
+          prisma.amenities.create({
+            data: amenity
+          })
+        )
+      );
+      console.log('  ✓ Amenities saved successfully');
+    } else {
+      console.log('  ⚠️ No amenities found in the vicinity');
+    }
+
   }
 
-  console.log('Database seeded successfully!');
+  console.log('\n=== Seed Summary ===');
+  console.log(`✅ Created ${listingsToCreate.length} listings`);
+  console.log(`✅ Added ${totalImages} images`);
+  console.log(`✅ Created amenities for all listings`);
+  console.log('\n=== Seed Complete ===\n');
 }
 
 main()
   .catch((e) => {
+    console.error('\n❌ Error during seeding:');
     console.error(e);
     process.exit(1);
   })
