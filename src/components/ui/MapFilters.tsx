@@ -24,7 +24,7 @@ const FACILITIES = [
 ];
 
 export default function MapFilters({ filters, onChange, compact = true }: MapFiltersProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   function toggleFacility(fac: string) {
     const next = filters.facilities.includes(fac)

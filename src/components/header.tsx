@@ -3,6 +3,7 @@ import Image from "next/image"; // Import Image component
 
 import { cn } from "@/lib/utils";
 import HeaderAuth from "@/components/header-auth";
+import SearchBar from "./ui/SearchBar";
 
 export default function Header() {
   return (
@@ -19,8 +20,12 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Center Content (Search input removed per request) */}
-      <div className="flex-1" />
+      {/* Center Content (Search) */}
+      <div className="flex-1 flex justify-center px-4">
+        <div className="w-full max-w-2xl">
+          <SearchBar />
+        </div>
+      </div>
 
       {/* Right Content (Authentication) */}
       <div>

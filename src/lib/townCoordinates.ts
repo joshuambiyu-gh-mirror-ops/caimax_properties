@@ -8,7 +8,19 @@ export const townCoordinates: { [key: string]: { longitude: number; latitude: nu
   'Machakos': { longitude: 37.2635, latitude: -1.5177, zoom: 13 }
 };
 
-export const findLocationCoordinates = (location: string, listings: any[]) => {
+interface ListingWithCoordinates {
+  location?: string;
+  longitude?: number;
+  latitude?: number;
+}
+
+interface Coordinates {
+  longitude: number;
+  latitude: number;
+  zoom: number;
+}
+
+export const findLocationCoordinates = (location: string, listings: ListingWithCoordinates[]): Coordinates => {
   // First check predefined coordinates
   const predefined = townCoordinates[location];
   if (predefined) return predefined;
@@ -20,7 +32,9 @@ export const findLocationCoordinates = (location: string, listings: any[]) => {
     typeof l.latitude === 'number'
   );
 
-  if (matchingListing) {
+  if (matchingListing && 
+      typeof matchingListing.longitude === 'number' && 
+      typeof matchingListing.latitude === 'number') {
     return {
       longitude: matchingListing.longitude,
       latitude: matchingListing.latitude,
@@ -28,6 +42,6 @@ export const findLocationCoordinates = (location: string, listings: any[]) => {
     };
   }
 
-  // Default to Nairobi if nothing found
+  // Default to Nairobi if nothing found or if coordinates are invalid
   return townCoordinates['Nairobi'];
 };

@@ -3,17 +3,16 @@ import { useState, useEffect } from 'react';
 import Map, { Marker, NavigationControl, ViewState } from 'react-map-gl';
 import { MapPin } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import SearchBar from './ui/SearchBar';
+
 import type { ListingWithImages } from '@/actions/get-listings';
 import { townCoordinates, findLocationCoordinates } from '@/lib/townCoordinates';
 
 export interface MapProps {
   listings?: ListingWithImages[];
   search: string;
-  setSearch: (s: string) => void;
 }
 
-export default function ListingsMap({ listings = [], search, setSearch }: MapProps) {
+export default function ListingsMap({ listings = [], search }: MapProps) {
   const [viewState, setViewState] = useState<ViewState>({
     longitude: 36.8172, // Center on Nairobi
     latitude: -1.2864,
@@ -25,19 +24,11 @@ export default function ListingsMap({ listings = [], search, setSearch }: MapPro
 
   // Pan to selected location when search changes
   useEffect(() => {
-    if (!search || search === 'All') {
-      // Reset to default view (Nairobi)
-      const defaultView = townCoordinates['Nairobi'];
-      setViewState(prev => ({
-        ...prev,
-        longitude: defaultView.longitude,
-        latitude: defaultView.latitude,
-        zoom: defaultView.zoom,
-      }));
-      return;
-    }
+    // Always get coordinates, defaulting to Nairobi if no search or "All"
+    const coordinates = (!search || search === 'All') 
+      ? townCoordinates['Nairobi']
+      : findLocationCoordinates(search, listings);
 
-    const coordinates = findLocationCoordinates(search, listings);
     setViewState(prev => ({
       ...prev,
       longitude: coordinates.longitude,

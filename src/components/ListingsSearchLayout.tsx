@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import Carousel from "@/components/carousel";
 import ListingsMap from "@/components/map";
 import { Ribbon } from "@/components/ui/ribbon";
-import SearchBar from "@/components/ui/SearchBar";
 import MapFilters, { Filters as MapFiltersType } from "@/components/ui/MapFilters";
 import { ListingWithImages } from "@/actions/get-listings";
 
@@ -45,7 +44,7 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
   ).filter(Boolean)));
   
   const uniqueTypes = Array.from(new Set(items.map(item => 
-    (item as any).propertyType
+    item.propertyType
   ).filter(Boolean)));
 
   // Combine all items into one array with "All" at the beginning
@@ -55,9 +54,6 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
     ...uniqueTypes.sort().map(type => ({ value: type, type: 'propertyType' }))
   ].map(item => typeof item === 'string' ? item : item.value);
 
-  // Use the controlled inputValue for client-side filtering
-  // (so UI controls like the Ribbon can update the visible listings)
-  const query = inputValue?.trim();
   // Start with query-based filtering
   let filteredListings = [...items];
 
@@ -66,27 +62,26 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
     filteredListings = filteredListings.filter(l =>
       l.name.toLowerCase().includes(selectedItem.toLowerCase()) ||
       l.location.toLowerCase().includes(selectedItem.toLowerCase()) ||
-      (l as any).propertyType === selectedItem
+      l.propertyType === selectedItem
     );
   }
 
   // Apply right-column (map) filters
   if (mapFilters.propertyType) {
-    filteredListings = filteredListings.filter(l => (l as any).propertyType === mapFilters.propertyType);
+    filteredListings = filteredListings.filter(l => l.propertyType === mapFilters.propertyType);
   }
   if (mapFilters.minPrice != null) {
-    filteredListings = filteredListings.filter(l => (l as any).price != null && (l as any).price >= (mapFilters.minPrice ?? 0));
+    filteredListings = filteredListings.filter(l => l.price != null && l.price >= (mapFilters.minPrice ?? 0));
   }
   if (mapFilters.maxPrice != null) {
-    filteredListings = filteredListings.filter(l => (l as any).price != null && (l as any).price <= (mapFilters.maxPrice ?? Infinity));
+    filteredListings = filteredListings.filter(l => l.price != null && l.price <= (mapFilters.maxPrice ?? Infinity));
   }
   if (mapFilters.bedrooms != null) {
     filteredListings = filteredListings.filter(l => typeof l.bedroomCount === 'number' && l.bedroomCount >= (mapFilters.bedrooms ?? 0));
   }
   if (mapFilters.facilities && mapFilters.facilities.length > 0) {
     filteredListings = filteredListings.filter(l => {
-      const facs: string[] = (l as any).facilities || [];
-      return mapFilters.facilities.every(f => facs.includes(f));
+      return mapFilters.facilities.every(f => l.facilities.includes(f));
     });
   }
 
@@ -96,19 +91,39 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
     if (loading || !hasMore) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/listings?limit=${limit}&skip=${skip}`);
-      const json = await res.json();
-      if (json.error) {
-        console.error('Error fetching more listings', json.error);
-        setLoading(false);
-        return;
+      const res = await fetch(`/api/listings?limit=${limit}&skip=${skip}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
       }
-      const newListings: ListingWithImages[] = json.listings || [];
-      setItems(prev => [...prev, ...newListings]);
+
+      const data = await res.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const newListings: ListingWithImages[] = data.listings;
+      if (!Array.isArray(newListings)) {
+        throw new Error('Invalid response format');
+      }
+
+      // Deduplicate listings based on ID
+      setItems(prev => {
+        const uniqueListings = new Map<string, ListingWithImages>();
+        prev.forEach(item => uniqueListings.set(String(item.id), item));
+        newListings.forEach(item => uniqueListings.set(String(item.id), item));
+        return Array.from(uniqueListings.values());
+      });
       setSkip(prev => prev + newListings.length);
-      setHasMore(!!json.hasMore);
+      setHasMore(!!data.hasMore);
     } catch (err) {
-      console.error('Failed to load more listings', err);
+      console.error('Failed to load more listings:', err);
+      // You might want to show an error message to the user here
     } finally {
       setLoading(false);
     }
@@ -117,46 +132,41 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white to-gray-200 min-h-screen w-full max-w-none m-0 p-0 overflow-hidden">
       {/* Fixed header with search and ribbon */}
-      <div className="col-span-1 lg:col-span-5 px-4 mb-4 sticky top-0 z-10 bg-white/90 backdrop-blur-sm space-y-4">
-        {/* Search bar */}
-        <div className="max-w-2xl mx-auto pt-4">
-          <SearchBar
-            value={inputValue}
-            onChange={(value) => {
-              setInputValue(value);
-              setSelectedItem(value);
-            }}
-          />
+      <div className="col-span-1 lg:col-span-5 px-4 pt-6 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto">
+          {/* Keep the global Header (app layout) as the main navbar. Render only the Ribbon here so
+              the search input in the header (global) will control the pathname and ListingsSearchLayout
+              picks it up via usePathname/local state. */}
+          <div className="bg-transparent px-0 py-2">
+            <Ribbon
+              items={allItems.map((label) => ({
+                label,
+                onClick: () => {
+                  setInputValue(label);
+                  setSelectedItem(label);
+                },
+              }))}
+              selected={selectedItem}
+            />
+          </div>
         </div>
-        {/* Ribbon */}
-        <Ribbon
-          items={allItems.map((label) => ({
-            label,
-            onClick: () => {
-              setInputValue(label);
-              setSelectedItem(label);
-            },
-          }))}
-          selected={selectedItem}
-        />
       </div>
       {/* Scrollable left column */}
       <div className="col-span-1 lg:col-span-3 w-full overflow-y-auto h-[calc(100vh-6rem)]">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full justify-items-start">
           {filteredListings.map((listing) => (
             <div key={listing.id} className="mb-8 w-full max-w-[384px] mx-auto">
-              <h1 className="text-xl m-2 text-black-500">{listing.name}</h1>
               <Carousel listing={listing} autoSlide={true} autoSlideInterval={5000} />
             </div>
           ))}
           {filteredListings.length > 0 && hasMore && (
-            <div className="sm:col-span-2 flex justify-center">
+            <div className="sm:col-span-2 flex justify-center w-full py-2">
               <button
                 onClick={loadMore}
                 disabled={loading}
-                className="mt-4 mb-12 inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg px-6 py-3 shadow-md transition-colors disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-full px-8 py-2.5 shadow-md transition-colors disabled:opacity-50"
               >
-                {loading ? 'Loading…' : 'Show more listings'}
+                {loading ? 'Loading...' : 'Show more listings •••'}
               </button>
             </div>
           )}
@@ -171,10 +181,8 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
           <div className="rounded-lg border border-gray-100 shadow-sm p-4 bg-white">
             <MapFilters filters={mapFilters} onChange={setMapFilters} />
           </div>
-          <div className="sticky top-4 rounded-lg border border-gray-100 shadow-sm bg-white">
-            <div className="w-full h-[500px]">
-              <ListingsMap listings={filteredListings} search={inputValue} setSearch={setInputValue} />
-            </div>
+          <div className="sticky top-4 overflow-hidden rounded-lg border border-gray-100 shadow-sm bg-white h-[calc(100vh-10rem)]">
+              <ListingsMap listings={filteredListings} search={inputValue} />
           </div>
         </div>
       </div>

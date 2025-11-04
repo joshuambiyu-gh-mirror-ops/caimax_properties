@@ -12,6 +12,9 @@ export interface ListingWithImages {
   description: string;
   latitude: number;
   longitude: number;
+  price: number | null;
+  propertyType: string;
+  facilities: string[];
   images: {
     url: string;
     order: number;
@@ -22,7 +25,19 @@ export async function getListings(limit = 10, skip = 0) {
   try {
     // fetch one extra to determine if there are more results
     const listings = await db.listing.findMany({
-      include: {
+      select: {
+        id: true,
+        name: true,
+        footage: true,
+        bathroomCount: true,
+        bedroomCount: true,
+        location: true,
+        description: true,
+        latitude: true,
+        longitude: true,
+        price: true,
+        propertyType: true,
+        facilities: true,
         images: {
           orderBy: {
             order: 'asc'

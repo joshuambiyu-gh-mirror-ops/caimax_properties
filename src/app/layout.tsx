@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/header";
+import { Footer } from "@/components/ui/footer";
 import { keywords } from "../../keywords";
 import Providers from "./providers";
 
@@ -68,7 +69,7 @@ export default function RootLayout({
             <main className="w-full flex-grow">
               {children}
             </main>
-            {/* SessionInfo removed */}
+            <Footer />
           </Providers>
         </div>
       </body>

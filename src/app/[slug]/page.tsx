@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import PropertyGallery from '@/components/PropertyGallery';
 import { db } from '@/db';
 import { notFound } from 'next/navigation';
@@ -6,7 +7,8 @@ import MapSection from '@/components/maps/MapSection';
 import { getNearestPerType } from '@/lib/calculate-nearby-amenities';
 import { getRelatedListings } from '@/actions/get-listings';
 import RelatedListingsClient from '@/components/RelatedListingsClient';
-import Carousel from '@/components/carousel';
+import ShowPageSkeleton from './loading';
+
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,21 +36,15 @@ interface PageProps {
   params?: Promise<{ slug: string }> | undefined;
 }
 
-export default async function Page({ params }: PageProps) {
-  // Next.js may provide `params` as a promise-like value in some runtimes.
-  // Await it before using its properties to avoid the runtime error:
-  // "params should be awaited before using its properties"
-  const resolvedParams = (await params) as { slug?: string } | undefined;
-  if (!resolvedParams?.slug) return notFound();
-
-  const slug = resolvedParams.slug;
-    const listing = await db.listing.findUnique({
+async function ListingContent({ slug }: { slug: string }) {
+  const listing = await db.listing.findUnique({
     where: { id: slug },
     include: { 
       images: { orderBy: { order: 'asc' } },
       amenities: true
     },
   }) as Listing | null;
+  
   if (!listing) return notFound();
 
   // Build a nearest-per-type list from stored amenities for display under the map
@@ -56,7 +52,7 @@ export default async function Page({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-100/80">
-  <div className="max-w-7xl mx-4 sm:mx-auto py-8 px-0 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       {/* Header Section with Breadcrumbs */}
       <div className="mb-8">
         <div className="flex flex-wrap items-center text-sm text-gray-500 mb-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm ring-1 ring-black/5 max-w-full">
@@ -84,17 +80,16 @@ export default async function Page({ params }: PageProps) {
       </div>
 
       {/* Main Content */}
-      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+      <div className="grid gap-4 sm:gap-6 lg:gap-8 md:grid-cols-3">
         {/* Left Column - Images and Details */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8">
-          {/* Image Carousel - Full width override */}
-          <div className="-mx-4 sm:mx-0 rounded-none sm:rounded-xl overflow-hidden shadow-lg sm:shadow-xl bg-white ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
-            {/* Larger gallery that breaks out of the normal container on mobile */}
-            <div className="w-screen sm:w-full min-h-[280px] sm:min-h-[420px] md:min-h-[480px]">
+        <div className="md:col-span-2 space-y-4 sm:space-y-6">
+          {/* Image Carousel */}
+          <div className="rounded-xl overflow-hidden shadow-lg bg-white ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl">
+            <div className="aspect-[4/3] w-full relative">
               <PropertyGallery images={listing.images.map(img => img.url)} />
             </div>
           </div>          {/* Property Features */}
-          <Card className="w-[calc(100vw-2rem)] sm:w-full overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+              <Card className="w-full overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-6">Property Features</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
@@ -165,8 +160,8 @@ export default async function Page({ params }: PageProps) {
         </div>
 
         {/* Right Column - Contact and Details */}
-        <div className="space-y-6 lg:max-w-none">
-      <div className="w-full lg:sticky lg:top-24">
+        <div className="space-y-6 md:max-w-none">
+      <div className="w-full md:sticky md:top-24">
         {/* Price card (right column) */}
         {typeof listing.price === 'number' && (
           <Card className="mb-4 sm:mb-6">
@@ -184,12 +179,12 @@ export default async function Page({ params }: PageProps) {
           </Card>
         )}
 
-        <div className="w-[calc(100vw-2rem)] sm:w-full">
+        <div className="w-full">
           <IntentionForm listingId={listing.id} listingName={listing.name} listingImageUrl={listing.images?.[0]?.url ?? null} />
         </div>
 
             {/* Description + Details (merged) */}
-            <Card className="w-[calc(100vw-2rem)] sm:w-full overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <Card className="w-full overflow-hidden shadow-xl bg-white/95 backdrop-blur-sm ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
               <div className="p-6">
                 <h3 className="text-xl font-semibold mb-4">Property Description</h3>
                 <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
@@ -222,7 +217,7 @@ export default async function Page({ params }: PageProps) {
             </Card>
             {/* Facilities Card */}
             {Array.isArray(listing.facilities) && listing.facilities.length > 0 && (
-              <Card className="w-[calc(100vw-2rem)] sm:w-full mt-4 sm:mt-6 overflow-hidden shadow-lg">
+              <Card className="w-full mt-4 sm:mt-6 overflow-hidden shadow-lg">
                 <div className="p-4 sm:p-6">
                   <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Facilities</h3>
                   <div className="flex flex-wrap gap-1.5 sm:gap-2">
@@ -254,6 +249,18 @@ export default async function Page({ params }: PageProps) {
   );
 }
 
+// Page Component
+export default async function Page({ params }: PageProps) {
+  const resolvedParams = (await params) as { slug?: string } | undefined;
+  if (!resolvedParams?.slug) return notFound();
+
+  return (
+    <Suspense fallback={<ShowPageSkeleton />}>
+      <ListingContent slug={resolvedParams.slug} />
+    </Suspense>
+  );
+}
+
 // Related Listings Component
 async function RelatedListings({ listingId }: { listingId: string }) {
   const LIMIT = 3;
@@ -267,7 +274,6 @@ async function RelatedListings({ listingId }: { listingId: string }) {
     );
   }
 
-  // Render a client component to allow loading more related listings on demand
   return (
     <Card className="p-0 bg-transparent shadow-none">
       <RelatedListingsClient initialListings={listings || []} listingId={listingId} initialHasMore={!!hasMore} initialLimit={LIMIT} />

@@ -2,8 +2,10 @@
 'use client';
 import { ArrowsPointingOutIcon, HomeIcon, MapPinIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { LoadingSpinner } from "./ui/loading-spinner";
 import { ChevronLeft, ChevronRight } from "react-feather";
 import type { ListingWithImages } from "@/actions/get-listings";
 
@@ -19,10 +21,18 @@ export default function Carousel({
   autoSlideInterval = 3000,
 }: CarouselProps) {
   const images = listing.images.map(img => img.url);
+  const router = useRouter();
   const [curr, setCurr] = useState(0);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const prev = useCallback(() => setCurr((c) => (c === 0 ? images.length - 1 : c - 1)), [images.length]);
   const next = useCallback(() => setCurr((c) => (c === images.length - 1 ? 0 : c + 1)), [images.length]);
+
+  const handleNavigation = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsNavigating(true);
+    await router.push(`/${listing.id}`);
+  };
 
   useEffect(() => {
     if (!autoSlide) return;
@@ -31,9 +41,15 @@ export default function Carousel({
   }, [autoSlide, autoSlideInterval, next]);
 
   return (
-  <Link href={`/${listing.id}`} className="block">
-        <div className="aspect-[3/4 max-w-sm h-[400px] flex flex-col overflow-hidden relative w-full mx-auto shadow-lg rounded-lg hover:shadow-red-500/50 transition-shadow transition-trasform hover:translate-z-60 transition-duration-300 duration-300 cursor-pointer hover:scale-105">
-      <div className="flex-1 relative flex flex-col">
+    <>
+      {isNavigating && <LoadingSpinner />}
+      <Link href={`/${listing.id}`} onClick={handleNavigation} className="block">
+        <div className="space-y-2">
+          <h1 className="text-lg sm:text-xl px-1 text-gray-800 font-medium line-clamp-1 h-7 overflow-hidden" title={`${listing.propertyType} in ${listing.location}`}>
+            {listing.propertyType} in {listing.location}
+          </h1>
+        <div className="aspect-[3/4 max-w-sm h-[400px] flex flex-col overflow-hidden relative w-full mx-auto shadow-lg rounded-lg hover:shadow-red-500/50 transition-shadow transition-transform hover:translate-z-60 transition-duration-300 duration-300 cursor-pointer hover:scale-105">
+          <div className="flex-1 relative flex flex-col">
         {/* Slide Container */}
         <div
           className="flex transition-transform ease-out duration-500 h-full"
@@ -107,6 +123,8 @@ export default function Carousel({
             </div>
           </div>
         </div>
-      </Link>
+      </div>
+    </Link>
+    </>
   );
 }
