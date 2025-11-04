@@ -32,7 +32,7 @@ export default function Carousel({
 
   return (
   <Link href={`/${listing.id}`} className="block">
-        <div className="max-w-sm h-[400px] flex flex-col overflow-hidden relative w-full mx-auto shadow-lg rounded-lg hover:shadow-red-500/50 transition-shadow transition-trasform hover:translate-z-60 transition-duration-300 duration-300 cursor-pointer hover:scale-105">
+        <div className="aspect-[3/4 max-w-sm h-[400px] flex flex-col overflow-hidden relative w-full mx-auto shadow-lg rounded-lg hover:shadow-red-500/50 transition-shadow transition-trasform hover:translate-z-60 transition-duration-300 duration-300 cursor-pointer hover:scale-105">
       <div className="flex-1 relative flex flex-col">
         {/* Slide Container */}
         <div
