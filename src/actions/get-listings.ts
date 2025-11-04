@@ -18,8 +18,9 @@ export interface ListingWithImages {
   }[];
 }
 
-export async function getListings() {
+export async function getListings(limit = 10, skip = 0) {
   try {
+    // fetch one extra to determine if there are more results
     const listings = await db.listing.findMany({
       include: {
         images: {
@@ -30,10 +31,15 @@ export async function getListings() {
       },
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      take: limit + 1,
+      skip,
     });
 
-    return { success: true, listings };
+    const hasMore = listings.length > limit;
+    const sliced = hasMore ? listings.slice(0, limit) : listings;
+
+    return { success: true, listings: sliced, hasMore };
   } catch (error) {
     console.error('Error fetching listings:', error);
     return { error: 'Failed to fetch listings' };

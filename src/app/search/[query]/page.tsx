@@ -8,7 +8,8 @@ interface SearchPageProps {
 }
 
 export default async function SearchPage({ params }: SearchPageProps) {
-  const { listings, error } = await getListings();
+  const LIMIT = 10;
+  const { listings, hasMore, error } = await getListings(LIMIT, 0);
   if (error) {
     return <div>Error loading listings</div>;
   }
@@ -16,5 +17,5 @@ export default async function SearchPage({ params }: SearchPageProps) {
   // Await params (Next may provide a promise-like value). If undefined, default to empty query.
   const resolved = (await params) as { query?: string } | undefined;
   const initialSearch = decodeURIComponent(resolved?.query ?? "");
-  return <ListingsSearchLayout listings={listings || []} initialSearch={initialSearch} />;
+  return <ListingsSearchLayout listings={listings || []} initialSearch={initialSearch} initialHasMore={!!hasMore} initialLimit={LIMIT} />;
 }
