@@ -46,7 +46,7 @@ export async function getListings(limit = 10, skip = 0) {
   }
 }
 
-export async function getRelatedListings(listingId: string, limit = 4) {
+export async function getRelatedListings(listingId: string, limit = 4, skip = 0) {
   try {
     // First get the current listing to get its location and features
     const currentListing = await db.listing.findUnique({
@@ -64,6 +64,7 @@ export async function getRelatedListings(listingId: string, limit = 4) {
     }
 
     // Then find similar listings based on location and features
+    // fetch one extra to determine if there are more results
     const relatedListings = await db.listing.findMany({
       where: {
         AND: [
@@ -89,13 +90,17 @@ export async function getRelatedListings(listingId: string, limit = 4) {
           }
         }
       },
-      take: limit,
+      take: limit + 1,
+      skip,
       orderBy: {
         createdAt: 'desc'
       }
     });
 
-    return { success: true, listings: relatedListings };
+    const hasMore = relatedListings.length > limit;
+    const sliced = hasMore ? relatedListings.slice(0, limit) : relatedListings;
+
+    return { success: true, listings: sliced, hasMore };
   } catch (error) {
     console.error('Error fetching related listings:', error);
     return { error: 'Failed to fetch related listings' };

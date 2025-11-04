@@ -5,6 +5,7 @@ import Link from 'next/link';
 import MapSection from '@/components/maps/MapSection';
 import { getNearestPerType } from '@/lib/calculate-nearby-amenities';
 import { getRelatedListings } from '@/actions/get-listings';
+import RelatedListingsClient from '@/components/RelatedListingsClient';
 import Carousel from '@/components/carousel';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -237,17 +238,17 @@ export default async function Page({ params }: PageProps) {
           </div>
         </div>
       </div>
-      {/* Related Listings */}
-  <div className="mt-12 pb-16">
-        <div className="flex items-center justify-between mb-8 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg ring-1 ring-black/5">
-          <h2 className="text-2xl font-bold text-gray-900">Similar Properties You May Like</h2>
-          <Button variant="outline" className="gap-2">
-            <List className="h-4 w-4" />
-            View All
-          </Button>
-        </div>
-        <RelatedListings listingId={listing.id} />
-      </div>
+          {/* Related Listings */}
+      <div className="mt-12 pb-16">
+            <div className="flex items-center justify-between mb-8 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg ring-1 ring-black/5">
+              <h2 className="text-2xl font-bold text-gray-900">Similar Properties You May Like</h2>
+              <Button variant="outline" className="gap-2">
+                <List className="h-4 w-4" />
+                View All
+              </Button>
+            </div>
+            <RelatedListings listingId={listing.id} />
+          </div>
     </div>
     </div>
   );
@@ -255,9 +256,10 @@ export default async function Page({ params }: PageProps) {
 
 // Related Listings Component
 async function RelatedListings({ listingId }: { listingId: string }) {
-  const { listings, error } = await getRelatedListings(listingId);
-  
-  if (error || !listings?.length) {
+  const LIMIT = 3;
+  const { listings, hasMore, error } = await getRelatedListings(listingId, LIMIT, 0);
+
+  if (error) {
     return (
       <Card className="p-8 text-center text-gray-500">
         No similar properties found at the moment.
@@ -265,11 +267,10 @@ async function RelatedListings({ listingId }: { listingId: string }) {
     );
   }
 
+  // Render a client component to allow loading more related listings on demand
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {listings.slice(0, 3).map((listing) => (
-        <Carousel key={listing.id} listing={listing} />
-      ))}
-    </div>
+    <Card className="p-0 bg-transparent shadow-none">
+      <RelatedListingsClient initialListings={listings || []} listingId={listingId} initialHasMore={!!hasMore} initialLimit={LIMIT} />
+    </Card>
   );
 }
