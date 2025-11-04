@@ -5,7 +5,7 @@ import { MapPin } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import SearchBar from './ui/SearchBar';
 import type { ListingWithImages } from '@/actions/get-listings';
-import { townCoordinates } from '@/lib/townCoordinates';
+import { townCoordinates, findLocationCoordinates } from '@/lib/townCoordinates';
 
 export interface MapProps {
   listings?: ListingWithImages[];
@@ -23,26 +23,31 @@ export default function ListingsMap({ listings = [], search, setSearch }: MapPro
     padding: { top: 0, bottom: 0, left: 0, right: 0 },
   });
 
-  // Pan to selected town when search changes
+  // Pan to selected location when search changes
   useEffect(() => {
-    const town = townCoordinates[search];
-    if (town) {
+    if (!search || search === 'All') {
+      // Reset to default view (Nairobi)
+      const defaultView = townCoordinates['Nairobi'];
       setViewState(prev => ({
         ...prev,
-        longitude: town.longitude,
-        latitude: town.latitude,
-        zoom: town.zoom,
+        longitude: defaultView.longitude,
+        latitude: defaultView.latitude,
+        zoom: defaultView.zoom,
       }));
+      return;
     }
-  }, [search]);
+
+    const coordinates = findLocationCoordinates(search, listings);
+    setViewState(prev => ({
+      ...prev,
+      longitude: coordinates.longitude,
+      latitude: coordinates.latitude,
+      zoom: coordinates.zoom,
+    }));
+  }, [search, listings]);
 
   return (
     <div className="space-y-4 mr-4">
-      <h1>Listings Map</h1>
-      {/* Search bar */}
-      <div className="mb-2">
-        <SearchBar value={search} onChange={setSearch} />
-      </div>
       <div className="w-full h-[400px] relative rounded-[2rem] shadow-lg transition-shadow duration-300 hover:shadow-2xl hover:shadow-red-300/40 overflow-hidden">
         <Map
           mapStyle="mapbox://styles/mapbox/streets-v11"

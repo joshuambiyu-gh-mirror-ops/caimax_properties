@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Carousel from "@/components/carousel";
 import ListingsMap from "@/components/map";
 import { Ribbon } from "@/components/ui/ribbon";
+import SearchBar from "@/components/ui/SearchBar";
 import MapFilters, { Filters as MapFiltersType } from "@/components/ui/MapFilters";
 import { ListingWithImages } from "@/actions/get-listings";
 
@@ -22,9 +23,9 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
   if (match) {
     search = decodeURIComponent(match[1]);
   }
-  const [inputValue, setInputValue] = useState(search || 'All');
+  const [inputValue, setInputValue] = useState(search || '');
   useEffect(() => {
-    setInputValue(search || 'All');
+    setInputValue(search || '');
   }, [search]);
   // Client-side state for incremental loading
   const [items, setItems] = useState<ListingWithImages[]>(listings);
@@ -114,9 +115,20 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white to-gray-200 min-h-screen w-full max-w-none m-0 p-0 overflow-x-hidden">
-      {/* Full-width ribbon container */}
-      <div className="col-span-1 lg:col-span-5 px-4 mb-4">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white to-gray-200 min-h-screen w-full max-w-none m-0 p-0 overflow-hidden">
+      {/* Fixed header with search and ribbon */}
+      <div className="col-span-1 lg:col-span-5 px-4 mb-4 sticky top-0 z-10 bg-white/90 backdrop-blur-sm space-y-4">
+        {/* Search bar */}
+        <div className="max-w-2xl mx-auto pt-4">
+          <SearchBar
+            value={inputValue}
+            onChange={(value) => {
+              setInputValue(value);
+              setSelectedItem(value);
+            }}
+          />
+        </div>
+        {/* Ribbon */}
         <Ribbon
           items={allItems.map((label) => ({
             label,
@@ -128,8 +140,9 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
           selected={selectedItem}
         />
       </div>
-      <div className="col-span-1 lg:col-span-3 w-full">
-        <div className="grid grid-cols-1 sm:grid-cols-2  gap-4 w-full justify-items-start">
+      {/* Scrollable left column */}
+      <div className="col-span-1 lg:col-span-3 w-full overflow-y-auto h-[calc(100vh-6rem)]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full justify-items-start">
           {filteredListings.map((listing) => (
             <div key={listing.id} className="mb-8 w-full max-w-[384px] mx-auto">
               <h1 className="text-xl m-2 text-black-500">{listing.name}</h1>
@@ -152,11 +165,16 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
           )}
         </div>
       </div>
-      <div className="hidden lg:block lg:col-span-2 shadow-none p-4 h-full w-full">
-        <div className="sticky top-20 space-y-4 min-h-[calc(100vh-5rem)] rounded-lg border border-gray-100 shadow-sm p-4">
-          <MapFilters filters={mapFilters} onChange={setMapFilters} />
-          <div className="w-full h-[500px] rounded-lg">
-            <ListingsMap listings={filteredListings} search={inputValue} setSearch={setInputValue} />
+      {/* Scrollable right column */}
+      <div className="hidden lg:block lg:col-span-2 w-full h-[calc(100vh-6rem)] overflow-y-auto">
+        <div className="p-4 space-y-4">
+          <div className="rounded-lg border border-gray-100 shadow-sm p-4 bg-white">
+            <MapFilters filters={mapFilters} onChange={setMapFilters} />
+          </div>
+          <div className="sticky top-4 rounded-lg border border-gray-100 shadow-sm bg-white">
+            <div className="w-full h-[500px]">
+              <ListingsMap listings={filteredListings} search={inputValue} setSearch={setInputValue} />
+            </div>
           </div>
         </div>
       </div>

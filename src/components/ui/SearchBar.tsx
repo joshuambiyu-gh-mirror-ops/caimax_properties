@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 import { Input } from "./input";
 
 interface SearchBarProps {
@@ -22,12 +23,14 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
   }
 
   return (
-    <div className="flex w-full max-w-md">
+    <div className="relative flex w-full max-w-md items-center">
+      <Search className="absolute left-3 h-4 w-4 text-gray-500" aria-hidden="true" />
       <Input
-        placeholder="Search..."
+        type="search"
+        placeholder="Search locations or property types..."
         value={value}
         onChange={handleInputChange}
-        className="flex-1"
+        className="flex-1 pl-9 pr-4"
       />
     </div>
   );
