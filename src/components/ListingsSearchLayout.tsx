@@ -22,9 +22,9 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
   if (match) {
     search = decodeURIComponent(match[1]);
   }
-  const [inputValue, setInputValue] = useState(search);
+  const [inputValue, setInputValue] = useState(search || 'All');
   useEffect(() => {
-    setInputValue(search);
+    setInputValue(search || 'All');
   }, [search]);
   // Client-side state for incremental loading
   const [items, setItems] = useState<ListingWithImages[]>(listings);
@@ -35,27 +35,39 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
   // Map / right-column filters
   const [mapFilters, setMapFilters] = useState<MapFiltersType>({ propertyType: undefined, minPrice: null, maxPrice: null, bedrooms: null, facilities: [] });
 
-  // Ribbon towns & selection for quick filters above the listings
-  const [selectedTown, setSelectedTown] = useState<string>(inputValue || '');
-  const towns = [
-    'Nairobi',
-    'Karen',
-    'Westlands',
-    'Kilimani',
-    'Syokimau',
-    'Ruiru',
-  ];
+  // Extract unique towns and property types from listings
+  const [selectedItem, setSelectedItem] = useState<string>(inputValue || 'All');
+  
+  // Get unique towns and property types from listings
+  const uniqueTowns = Array.from(new Set(items.map(item => 
+    item.location?.split(',')[0]?.trim()
+  ).filter(Boolean)));
+  
+  const uniqueTypes = Array.from(new Set(items.map(item => 
+    (item as any).propertyType
+  ).filter(Boolean)));
+
+  // Combine all items into one array with "All" at the beginning
+  const allItems = [
+    'All',
+    ...uniqueTowns.sort().map(town => ({ value: town, type: 'location' })),
+    ...uniqueTypes.sort().map(type => ({ value: type, type: 'propertyType' }))
+  ].map(item => typeof item === 'string' ? item : item.value);
 
   // Use the controlled inputValue for client-side filtering
   // (so UI controls like the Ribbon can update the visible listings)
   const query = inputValue?.trim();
   // Start with query-based filtering
-  let filteredListings = query
-    ? items.filter(l =>
-        l.name.toLowerCase().includes(query.toLowerCase()) ||
-        l.location.toLowerCase().includes(query.toLowerCase())
-      )
-    : [...items];
+  let filteredListings = [...items];
+
+  // Apply combined filter
+  if (selectedItem && selectedItem !== 'All') {
+    filteredListings = filteredListings.filter(l =>
+      l.name.toLowerCase().includes(selectedItem.toLowerCase()) ||
+      l.location.toLowerCase().includes(selectedItem.toLowerCase()) ||
+      (l as any).propertyType === selectedItem
+    );
+  }
 
   // Apply right-column (map) filters
   if (mapFilters.propertyType) {
@@ -103,20 +115,20 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white to-gray-200 min-h-screen w-full max-w-none m-0 p-0 overflow-x-hidden">
+      {/* Full-width ribbon container */}
+      <div className="col-span-1 lg:col-span-5 px-4 mb-4">
+        <Ribbon
+          items={allItems.map((label) => ({
+            label,
+            onClick: () => {
+              setInputValue(label);
+              setSelectedItem(label);
+            },
+          }))}
+          selected={selectedItem}
+        />
+      </div>
       <div className="col-span-1 lg:col-span-3 w-full">
-        {/* Ribbon (town quick filters) placed at the top of the listings column */}
-        <div className="mb-4 px-2">
-          <Ribbon
-            items={towns.map((label) => ({
-              label,
-              onClick: () => {
-                setInputValue(label);
-                setSelectedTown(label);
-              },
-            }))}
-            selected={selectedTown}
-          />
-        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2  gap-4 w-full justify-items-start">
           {filteredListings.map((listing) => (
             <div key={listing.id} className="mb-8 w-full max-w-[384px] mx-auto">
@@ -141,9 +153,9 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
         </div>
       </div>
       <div className="hidden lg:block lg:col-span-2 shadow-none p-4 h-full w-full">
-        <div className="sticky top-20 space-y-4 h-[calc(100vh-5rem)] rounded-lg overflow-hidden border border-gray-100 shadow-sm p-4">
+        <div className="sticky top-20 space-y-4 min-h-[calc(100vh-5rem)] rounded-lg border border-gray-100 shadow-sm p-4">
           <MapFilters filters={mapFilters} onChange={setMapFilters} />
-          <div className="w-full rounded-lg overflow-hidden">
+          <div className="w-full h-[500px] rounded-lg">
             <ListingsMap listings={filteredListings} search={inputValue} setSearch={setInputValue} />
           </div>
         </div>

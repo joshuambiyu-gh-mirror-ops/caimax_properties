@@ -1,10 +1,11 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Map, { Marker, NavigationControl, ViewState } from 'react-map-gl';
 import { MapPin } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import SearchBar from './ui/SearchBar';
 import type { ListingWithImages } from '@/actions/get-listings';
+import { townCoordinates } from '@/lib/townCoordinates';
 
 export interface MapProps {
   listings?: ListingWithImages[];
@@ -22,7 +23,18 @@ export default function ListingsMap({ listings = [], search, setSearch }: MapPro
     padding: { top: 0, bottom: 0, left: 0, right: 0 },
   });
 
-  // Map view state defaults to Nairobi; Ribbon filtering/panning removed from this component.
+  // Pan to selected town when search changes
+  useEffect(() => {
+    const town = townCoordinates[search];
+    if (town) {
+      setViewState(prev => ({
+        ...prev,
+        longitude: town.longitude,
+        latitude: town.latitude,
+        zoom: town.zoom,
+      }));
+    }
+  }, [search]);
 
   return (
     <div className="space-y-4 mr-4">

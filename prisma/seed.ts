@@ -51,7 +51,8 @@ async function main() {
 
   // Generate listings with our seed data
   console.log('\n📋 Generating listing data...');
-  const listingsToCreate = generateListings(dummyUser.id);
+  // Generate 100 listings (mix of Nairobi neighborhoods + Kisumu, Machakos, etc.)
+  const listingsToCreate = generateListings(dummyUser.id, 100);
   console.log(`✓ Generated ${listingsToCreate.length} listings in memory`);
 
   console.log('\n🏗️ Creating listings in database...');

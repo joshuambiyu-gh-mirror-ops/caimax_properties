@@ -79,6 +79,34 @@ const locations = [
     longitude: 36.0726,
     area: "London, Nakuru"
   }
+  ,
+  // Additional Nairobi suburbs / satellite towns requested
+  {
+    name: "Syokimau",
+    latitude: -1.3636,
+    longitude: 36.9586,
+    area: "Syokimau, Nairobi"
+  },
+  {
+    name: "Ruiru",
+    latitude: -1.1454,
+    longitude: 36.9584,
+    area: "Ruiru, Kiambu"
+  },
+  // Kisumu
+  {
+    name: "Kisumu CBD",
+    latitude: -0.0917,
+    longitude: 34.7680,
+    area: "Kisumu"
+  },
+  // Machakos
+  {
+    name: "Machakos Town",
+    latitude: -1.5167,
+    longitude: 37.2667,
+    area: "Machakos"
+  }
 ];
 
 // High-quality real estate images from Unsplash
@@ -234,37 +262,39 @@ interface GeneratedListing {
 }
 
 // Generate listings data
-export const generateListings = (userId: string): GeneratedListing[] => {
+export const generateListings = (userId: string, total = 100): GeneratedListing[] => {
   const listings: GeneratedListing[] = [];
-  const cities = ['Nairobi', 'Mombasa', 'Nakuru'];
-  
-  console.log('\n=== Starting Listing Generation ===');
-  
-  // Generate listings for each city
-  cities.forEach(city => {
-    console.log(`\n🏘️ Generating listings for ${city}`);
-    const cityLocations = getLocationsForCity(city);
-    const listingsPerCity = city === 'Nairobi' ? 12 : 8; // More listings for Nairobi
-    console.log(`- Planning to create ${listingsPerCity} listings`);
 
-    for (let i = 0; i < listingsPerCity; i++) {
-      // Get random property type and its configurations
-      const propertyConfig = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
-      
-      // Get random location from this city
-      const location = cityLocations[Math.floor(Math.random() * cityLocations.length)];
-      
-      // Add some random variation to the exact coordinates
-      const latitude = location.latitude + (Math.random() - 0.5) * 0.01;
-      const longitude = location.longitude + (Math.random() - 0.5) * 0.01;
+  console.log('\n=== Starting Listing Generation ===');
+  console.log(`- Target total listings: ${total}`);
+
+  // create a pool of target areas including requested neighborhoods / towns
+  const targetAreas = [
+    // Nairobi neighborhoods
+    'Kilimani, Nairobi', 'Westlands, Nairobi', 'Karen, Nairobi', 'Kileleshwa, Nairobi', 'Lavington, Nairobi', 'Syokimau, Nairobi', 'Ruiru, Kiambu',
+    // Other cities
+    'Kisumu', 'Machakos', 'Nyali, Mombasa', 'Section 58, Nakuru'
+  ];
+
+  for (let i = 0; i < total; i++) {
+    // Choose a random location object matching one of the target areas
+    const available = locations.filter(loc => targetAreas.some(t => loc.area.includes(t.split(',')[0])));
+    const location = available[Math.floor(Math.random() * available.length)];
+
+    // If for some reason no location, fallback to first
+    const loc = location || locations[0];
+
+    // slight coordinate jitter
+    const latitude = loc.latitude + (Math.random() - 0.5) * 0.02;
+    const longitude = loc.longitude + (Math.random() - 0.5) * 0.02;
+
+    // Get random property type and its configurations
+    const propertyConfig = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
 
     // Get 2-4 random images
     const imageCount = getRandomNumber(2, 4);
     const listingImages = getRandomItems(unsplashImages, imageCount)
-      .map((url, index) => ({
-        url,
-        order: index + 1
-      }));
+      .map((url, index) => ({ url, order: index + 1 }));
 
     // Get 3-6 random features
     const propertyFeatures = getRandomItems(features, getRandomNumber(3, 6));
@@ -273,24 +303,17 @@ export const generateListings = (userId: string): GeneratedListing[] => {
     const propertyFacilities = getRandomItems(facilities, getRandomNumber(2, 4));
 
     // Generate random price within the range
-    const price = getRandomNumber(
-      propertyConfig.priceRange.min,
-      propertyConfig.priceRange.max
-    );
+    const price = getRandomNumber(propertyConfig.priceRange.min, propertyConfig.priceRange.max);
 
     // Generate random square footage
-    const footage = getRandomNumber(
-      propertyConfig.footageRange.min,
-      propertyConfig.footageRange.max
-    );
+    const footage = getRandomNumber(propertyConfig.footageRange.min, propertyConfig.footageRange.max);
 
-    // Create listing object
-    const listing = {
-      name: `${propertyConfig.type.charAt(0) + propertyConfig.type.slice(1).toLowerCase()} in ${location.area}`,
+    const listing: GeneratedListing = {
+      name: `${propertyConfig.type.charAt(0) + propertyConfig.type.slice(1).toLowerCase()} in ${loc.area}`,
       footage,
-      bathroomCount: Math.ceil(footage / 800), // Rough estimate based on size
-      bedroomCount: Math.ceil(footage / 600), // Rough estimate based on size
-      location: location.area,
+      bathroomCount: Math.max(1, Math.ceil(footage / 800)),
+      bedroomCount: Math.max(1, Math.ceil(footage / 600)),
+      location: loc.area,
       latitude,
       longitude,
       description: `${getRandomItems(propertyConfig.description, 1)[0]}.\n\nFeatures:\n${propertyFeatures.join('\n')}`,
@@ -302,8 +325,8 @@ export const generateListings = (userId: string): GeneratedListing[] => {
     };
 
     listings.push(listing);
-    }
-  });
+  }
 
+  console.log(`✓ Generated ${listings.length} listings`);
   return listings;
 };
