@@ -38,5 +38,5 @@ jobs:
           echo "NEXT_PUBLIC_AGENT_EMAIL=${{ secrets.NEXT_PUBLIC_AGENT_EMAIL }}" >> .env
 
       - name: Run Docker Container
-        run: sudo docker run --env-file .env -d --name caimax_client -p 8080:3000 -p 5555:5555 joshuamumo/caimax_client:latest
+        run: sudo docker run --env-file .env -d --name caimax_client -p 80:3000 -p 5555:5555 joshuamumo/caimax_client:latest
         
