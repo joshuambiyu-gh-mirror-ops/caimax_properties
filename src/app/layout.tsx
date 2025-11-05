@@ -5,6 +5,7 @@ import Header from "@/components/header";
 import { Footer } from "@/components/ui/footer";
 import { keywords } from "../../keywords";
 import Providers from "./providers";
+import GoogleOneTap from "@/components/GoogleOneTap";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -70,6 +71,7 @@ export default function RootLayout({
               {children}
             </main>
             <Footer />
+            <GoogleOneTap />
           </Providers>
         </div>
       </body>
