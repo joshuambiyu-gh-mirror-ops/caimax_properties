@@ -13,8 +13,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Clean up Docker resources
+        run: |
+          # Remove all stopped containers
+          sudo docker container prune -f
+          # Remove unused images
+          sudo docker image prune -a -f
+          # Remove unused volumes
+          sudo docker volume prune -f
+          # Remove unused networks
+          sudo docker network prune -f
+          # Show disk space after cleanup
+          df -h
+
       - name: Pull Docker Image
         run: sudo docker pull joshuamumo/caimax_client:latest
+      
       - name: Delete Old Docker Container
         run: sudo docker rm -f caimax_client || true
       - name: Create .env file from secrets
