@@ -174,12 +174,14 @@ export default function GoogleOneTap() {
 
       setHasAttempted(true);
       
-      try {
+        try {
         console.log('[GoogleOneTap] Attempting sign in with token...');
+        const callbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : undefined;
+        console.debug('[GoogleOneTap] Using callbackUrl:', callbackUrl);
         const res = await signIn("google-onetap", {
           id_token: idToken,
           redirect: false,
-          callbackUrl: "http://localhost:3002/dashboard"
+          callbackUrl,
         });
 
         console.log('[GoogleOneTap] Sign in response:', res);
