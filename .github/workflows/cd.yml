@@ -31,6 +31,15 @@ jobs:
           echo "Removing all containers..."
           sudo docker container rm -f $(sudo docker container ls -aq) || true
 
+          # Clean up network to ensure ports are released
+          echo "Cleaning up Docker networks..."
+          sudo docker network prune -f
+          
+          # Reset Docker networking (in case of stuck ports)
+          echo "Restarting Docker service..."
+          sudo systemctl restart docker
+          sleep 5
+
           # Now that containers are stopped and removed, clean up everything else
           echo "Running system prune..."
           sudo docker system prune -a -f --volumes
@@ -84,6 +93,21 @@ jobs:
           echo "SEND_FROM=${{ secrets.SEND_FROM }}" >> .env
           echo "NEXT_PUBLIC_AGENT_EMAIL=${{ secrets.NEXT_PUBLIC_AGENT_EMAIL }}" >> .env
 
+      - name: Check and free up port 80
+        run: |
+          echo "Checking for processes using port 80..."
+          sudo lsof -i :80 || true
+          sudo fuser -k 80/tcp || true
+          # Wait a moment for the port to be fully released
+          sleep 5
+
       - name: Run Docker Container
-        run: sudo docker run --env-file .env -d --name caimax_client -p 80:3000 -p 5555:5555 joshuamumo/caimax_client:latest
+        run: |
+          # Try to run the container
+          if ! sudo docker run --env-file .env -d --name caimax_client -p 80:3000 -p 5555:5555 joshuamumo/caimax_client:latest; then
+            echo "First attempt failed, waiting 10 seconds and trying again..."
+            sleep 10
+            # Try one more time
+            sudo docker run --env-file .env -d --name caimax_client -p 80:3000 -p 5555:5555 joshuamumo/caimax_client:latest
+          fi
         
