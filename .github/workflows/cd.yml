@@ -15,15 +15,48 @@ jobs:
 
       - name: Clean up Docker resources
         run: |
-          # Remove all stopped containers
-          sudo docker container prune -f
-          # Remove unused images
-          sudo docker image prune -a -f
-          # Remove unused volumes
-          sudo docker volume prune -f
-          # Remove unused networks
-          sudo docker network prune -f
-          # Show disk space after cleanup
+          echo "Initial disk space:"
+          df -h
+
+          # First, stop and remove the specific container we know about
+          echo "Stopping and removing existing caimax_client container..."
+          sudo docker stop caimax_client || true
+          sudo docker rm -f caimax_client || true
+
+          # Then stop any other running containers
+          echo "Stopping any other running containers..."
+          sudo docker ps -q | xargs -r sudo docker stop || true
+
+          # Remove all containers (just to be sure)
+          echo "Removing all containers..."
+          sudo docker container rm -f $(sudo docker container ls -aq) || true
+
+          # Now that containers are stopped and removed, clean up everything else
+          echo "Running system prune..."
+          sudo docker system prune -a -f --volumes
+
+          # Final verification - try to remove any remaining images
+          echo "Removing any remaining images..."
+          sudo docker image rm -f $(sudo docker image ls -q) || true
+
+          echo "Final disk space:"
+          df -h
+          
+          # Clean up system
+          sudo apt-get clean
+          sudo apt-get autoremove -y
+          
+          # Remove old logs
+          sudo find /var/log -type f -name "*.log" -mtime +7 -delete
+          sudo find /var/log -type f -name "*.gz" -mtime +7 -delete
+          
+          # Clean package manager caches
+          sudo rm -rf /root/.npm /root/.cache/npm
+          sudo rm -rf /root/.cache/yarn
+          sudo rm -rf /root/.cache/pnpm
+          
+          # Show final disk space
+          echo "Final disk space:"
           df -h
 
       - name: Pull Docker Image
