@@ -1,9 +1,9 @@
-name : Continuous Deployment
-on: 
-    workflow_run:
-        workflows: ["Build and Push Docker Image"]
-        types:
-            - completed
+name: Continuous Deployment
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
 
 jobs:
   build:
@@ -13,66 +13,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Stop and remove existing container
+        run: |
+          echo "Stopping and removing existing caimax_client container..."
+          sudo docker stop caimax_client || true
+          sudo docker rm -f caimax_client || true
+
       - name: Clean up Docker resources
         run: |
           echo "Initial disk space:"
           df -h
 
-          # First, stop and remove the specific container we know about
-          echo "Stopping and removing existing caimax_client container..."
-          sudo docker stop caimax_client || true
-          sudo docker rm -f caimax_client || true
-
-          # Then stop any other running containers
-          echo "Stopping any other running containers..."
+          # Stop any other running containers
+          echo "Stopping other running containers..."
           sudo docker ps -q | xargs -r sudo docker stop || true
 
-          # Remove all containers (just to be sure)
-          echo "Removing all containers..."
+          # Remove all containers
+          echo "Removing old containers..."
           sudo docker container rm -f $(sudo docker container ls -aq) || true
 
-          # Clean up network to ensure ports are released
+          # Clean up networks to ensure ports are released
           echo "Cleaning up Docker networks..."
           sudo docker network prune -f
-          
-          # Reset Docker networking (in case of stuck ports)
-          echo "Restarting Docker service..."
-          sudo systemctl restart docker
-          sleep 5
 
-          # Now that containers are stopped and removed, clean up everything else
+          # Run a system prune to remove unused images/cache/volumes
           echo "Running system prune..."
           sudo docker system prune -a -f --volumes
 
-          # Final verification - try to remove any remaining images
-          echo "Removing any remaining images..."
-          sudo docker image rm -f $(sudo docker image ls -q) || true
-
-          echo "Final disk space:"
-          df -h
-          
-          # Clean up system
-          sudo apt-get clean
-          sudo apt-get autoremove -y
-          
-          # Remove old logs
-          sudo find /var/log -type f -name "*.log" -mtime +7 -delete
-          sudo find /var/log -type f -name "*.gz" -mtime +7 -delete
-          
-          # Clean package manager caches
-          sudo rm -rf /root/.npm /root/.cache/npm
-          sudo rm -rf /root/.cache/yarn
-          sudo rm -rf /root/.cache/pnpm
-          
-          # Show final disk space
           echo "Final disk space:"
           df -h
 
       - name: Pull Docker Image
         run: sudo docker pull joshuamumo/caimax_client:latest
-      
-      - name: Delete Old Docker Container
-        run: sudo docker rm -f caimax_client || true
+
       - name: Create .env file from secrets
         run: |
           echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
@@ -98,7 +71,6 @@ jobs:
           echo "Checking for processes using port 80..."
           sudo lsof -i :80 || true
           sudo fuser -k 80/tcp || true
-          # Wait a moment for the port to be fully released
           sleep 5
 
       - name: Run Docker Container
