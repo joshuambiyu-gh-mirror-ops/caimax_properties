@@ -21,8 +21,8 @@ export default function MapSection({
   nearestPerType
 }: MapSectionProps) {
   return (
-  <Card className="w-full overflow-hidden shadow-lg p-0 rounded-none sm:rounded-xl border-0 overflow-x-hidden">
-      <div className="relative w-[calc(100vw-2rem)] sm:w-full">
+  <Card className="w-full overflow-hidden shadow-lg p-0 rounded-none sm:rounded-xl border-0">
+      <div className="relative w-full">
         <div className="absolute top-0 left-0 right-0 z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-3 sm:p-4 bg-white/90 backdrop-blur-sm">
           <h2 className="text-lg sm:text-xl font-semibold">Location & Nearby Places</h2>
           <Button 
@@ -36,16 +36,16 @@ export default function MapSection({
             Reset Map View
           </Button>
         </div>
-        {/* let the map component control its own height (remove outer aspect wrapper that caused double-sizing) */}
-        <div className="w-full">
+        {/* Map with locked height */}
+        <div className="w-full h-[320px] sm:h-[420px] md:h-[500px]">
           <MapboxListingMap
             listingId={listingId}
             lat={lat}
             lng={lng}
           />
         </div>
-        {/* pull the amenities up to touch the map and remove border so it blends */}
-        <div className="-mt-[4px] bg-white">
+        {/* Amenities - let it size naturally */}
+        <div className="bg-white">
           <NearbyAmenitiesClient amenities={nearestPerType} />
         </div>
       </div>

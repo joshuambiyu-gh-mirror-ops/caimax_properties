@@ -191,6 +191,50 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
     }
   }, [lng, lat, showPlaces, listingId]);
 
+  // Fix Mapbox popup aria-hidden conflict that causes flicker
+  useEffect(() => {
+    const fixPopupAriaHidden = () => {
+      try {
+        // Get all close buttons that might have aria-hidden set
+        const closeButtons = document.querySelectorAll('.mapboxgl-popup-close-button[aria-hidden="true"]');
+        closeButtons.forEach(button => {
+          // Remove aria-hidden to prevent focus conflict that causes reflow flicker
+          button.removeAttribute('aria-hidden');
+        });
+      } catch (error) {
+        console.warn('Error fixing popup aria-hidden:', error);
+      }
+    };
+
+    // Fix on selection change
+    if (selectedPlace) {
+      // Use a small delay to ensure DOM has updated
+      const timeoutId = setTimeout(fixPopupAriaHidden, 0);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [selectedPlace]);
+
+  // Also observe for any dynamic changes
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const closeButtons = document.querySelectorAll('.mapboxgl-popup-close-button[aria-hidden="true"]');
+      closeButtons.forEach(button => {
+        button.removeAttribute('aria-hidden');
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-hidden'],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   // Listen for external "fly to" and "reset view" requests
   useEffect(() => {
     interface FlyToEventDetail {
@@ -202,15 +246,64 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
       distance?: number;
     }
 
-    // Re-exporting the custom event type with additional properties
-interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
-  // Add any custom event properties here if needed in the future
-  readonly timeStamp: number;
-}
+    interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
+      readonly timeStamp: number;
+    }
+
+    function performMapAnimation(mapboxMap: any, geom: any, d: any) {
+      try {
+        if (geom && geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
+          setRouteGeoJSON({ 
+            type: 'Feature', 
+            geometry: geom, 
+            properties: { timestamp: Date.now() } 
+          });
+
+          const coords = geom.coordinates as [number, number][];
+          const lons = coords.map(c => c[0]);
+          const lats = coords.map(c => c[1]);
+          const minLon = Math.min(...lons);
+          const maxLon = Math.max(...lons);
+          const minLat = Math.min(...lats);
+          const maxLat = Math.max(...lats);
+          
+          mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], { 
+            padding: 80, 
+            duration: 1200,
+            pitch: 0,
+            bearing: 0
+          });
+        } else {
+          if (typeof mapboxMap.flyTo === 'function') {
+            mapboxMap.flyTo({ 
+              center: [d.longitude, d.latitude], 
+              zoom: Math.max(viewState.zoom ?? 15, 16), 
+              bearing: 0, 
+              pitch: 0,
+              speed: 1.2, 
+              curve: 1.4 
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('Error in performMapAnimation:', error);
+      }
+    }
 
     async function onFlyTo(e: FlyToEvent) {
       const d = e?.detail;
       if (!d || typeof d.latitude !== 'number' || typeof d.longitude !== 'number') return;
+      
+      // Lock scroll position during animation to prevent page jump
+      const scrollTop = window.scrollY;
+      const scrollLock = () => {
+        if (window.scrollY !== scrollTop) {
+          window.scrollTo(0, scrollTop);
+        }
+      };
+      
+      window.addEventListener('scroll', scrollLock, { passive: false });
+      
       const place: Place = {
         type: (d.type as Place['type']) || 'restaurant',
         name: d.name || d.id || 'Amenity',
@@ -221,64 +314,31 @@ interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
 
       setSelectedPlace(place);
 
-      // Request a routed path from Mapbox Directions API and draw it
       const geom = await fetchRouteGeoJSON(lng, lat, d.longitude, d.latitude);
-      if (geom && geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
-        setRouteGeoJSON({ 
-          type: 'Feature', 
-          geometry: geom, 
-          properties: {
-            // Add any relevant properties here
-            timestamp: Date.now()
-          } 
-        });
-
-        // Fit map to route bounds if possible
-        try {
-          const mapboxMap = mapRef.current?.getMap?.();
-            if (mapboxMap) {
-            const coords = geom.coordinates as [number, number][];
-            const lons = coords.map(c => c[0]);
-            const lats = coords.map(c => c[1]);
-            const minLon = Math.min(...lons);
-            const maxLon = Math.max(...lons);
-            const minLat = Math.min(...lats);
-            const maxLat = Math.max(...lats);
-            mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 80, duration: 1200 });
-            return;
-          }
-        } catch (error) {
-          console.warn('Error fitting bounds:', error);
-          // fall back to flyTo
-        }
-      }
-
-      // fallback: just fly to the destination
+      
       try {
         const mapboxMap = mapRef.current?.getMap?.();
-        if (mapboxMap && typeof mapboxMap.flyTo === 'function') {
-          mapboxMap.flyTo({ center: [d.longitude, d.latitude], zoom: Math.max(viewState.zoom ?? 15, 16), bearing: 0, pitch: 45, speed: 1.2, curve: 1.4 });
+        if (!mapboxMap) {
+          window.removeEventListener('scroll', scrollLock);
           return;
         }
-    } catch (error) {
-      console.warn('Error during map transition:', error);
-      // fallback to viewState transition
-    }      setViewState((prev) => ({
-        ...prev,
-        longitude: d.longitude,
-        latitude: d.latitude,
-        zoom: Math.max(prev?.zoom ?? 15, 16),
-        bearing: 0,
-        pitch: 45,
-        transitionDuration: 1200
-      }));
+
+        performMapAnimation(mapboxMap, geom, d);
+        
+        // Release scroll lock after animation
+        setTimeout(() => {
+          window.removeEventListener('scroll', scrollLock);
+        }, 1300);
+      } catch (error) {
+        console.warn('Error during map transition:', error);
+        window.removeEventListener('scroll', scrollLock);
+      }
     }
 
     function onResetView() {
       setSelectedPlace(null);
       setRouteGeoJSON(null);
 
-      // Prefer using the Mapbox API to animate the map back to the listing
       try {
         const mapboxMap = mapRef.current?.getMap?.();
         if (mapboxMap && typeof mapboxMap.flyTo === 'function') {
@@ -286,20 +346,8 @@ interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
           return;
         }
       } catch (error) {
-        // fall back to updating viewState if mapbox map isn't available
         console.warn('Mapbox not ready for flyTo; falling back to state update', error);
       }
-
-      // fallback: update the local viewState (works if Map is controlled)
-      setViewState((prev) => ({
-        ...prev,
-        longitude: lng,
-        latitude: lat,
-        zoom: 15,
-        bearing: 0,
-        pitch: 0,
-        transitionDuration: 800
-      }));
     }
 
     window.addEventListener('caimax:flyToAmenity', onFlyTo as unknown as EventListener);
@@ -311,17 +359,14 @@ interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
   }, [lat, lng, viewState.zoom]);
 
   return (
-  <div className="w-full max-w-full">
-      {/* Map Container: aggressively limit width/height for mobile */}
-  <div className="w-full h-[320px] sm:h-[420px] md:h-[500px] px-0 box-border max-w-full">
-        {mounted ? (
+  <div className="w-full h-full">
+      {mounted ? (
           <Map
             ref={mapRef}
             initialViewState={viewState}
             style={{ width: '100%', height: '100%' }}
             mapStyle="mapbox://styles/mapbox/streets-v12"
             mapboxAccessToken={MAPBOX_TOKEN}
-            onMove={evt => setViewState(prev => ({ ...prev, ...evt.viewState }))}
           >
             {/* Main property marker */}
             <Marker
@@ -357,8 +402,8 @@ interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
                 onClose={() => setSelectedPlace(null)}
                 offset={25}
               >
-                <div className="p-2">
-                  <p className="text-sm text-gray-600">{formatDistance(selectedPlace.distanceKm)}</p>
+                <div className="p-2 min-w-[120px]">
+                  <p className="text-sm text-gray-600 whitespace-nowrap">{formatDistance(selectedPlace.distanceKm)}</p>
                 </div>
               </Popup>
             )}
@@ -379,7 +424,6 @@ interface FlyToEvent extends CustomEvent<FlyToEventDetail> {
         ) : (
           <div style={{ width: '100%', height: '100%' }} />
         )}
-      </div>
     </div>
   );
 }

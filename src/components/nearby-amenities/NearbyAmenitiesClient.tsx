@@ -24,13 +24,10 @@ interface Amenity {
 export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenity[] }) {
   const handleClick = (a: Amenity) => {
     if (!a.latitude || !a.longitude) return;
-    // Normalize distance: DB value should be in km, but older data or other sources
-    // might store meters. If a.distance seems unreasonably large (>1000),
-    // treat it as meters and convert to km.
+    
     const rawDistance = a.distance ?? 0;
     const normalizedDistanceKm = rawDistance > 1000 ? rawDistance / 1000 : rawDistance;
 
-    // Dispatch a CustomEvent that the map listens for
     const ev = new CustomEvent('caimax:flyToAmenity', {
       detail: {
         id: a.id,
@@ -61,7 +58,11 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
             {amenities.map((a) => (
               <li key={a.id} className="flex-none mb-2 sm:mb-0">
                 <button
-                  onClick={() => handleClick(a)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleClick(a);
+                  }}
                   onMouseDown={(e) => e.preventDefault()} /* prevent browser auto-scroll on first click */
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
@@ -69,8 +70,9 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
                       handleClick(a);
                     }
                   }}
-                  className="snap-center min-w-[110px] sm:min-w-[140px] bg-white backdrop-blur-sm rounded-lg p-2 ring-1 ring-black/5 hover:ring-black/10 hover:bg-white/95 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 group touch-pan-x"
+                  className="snap-center min-w-[110px] sm:min-w-[140px] bg-white backdrop-blur-sm rounded-lg p-2 ring-1 ring-black/5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 group touch-pan-x transition-all duration-150 scale-100 hover:scale-105 active:scale-95 origin-center"
                   type="button"
+                  style={{ willChange: 'transform' }}
                 >
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="p-1.5 bg-gray-50 rounded text-gray-600 group-hover:text-gray-900 transition-colors">
