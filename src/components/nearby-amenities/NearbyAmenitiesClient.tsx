@@ -55,7 +55,7 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
             <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white/90 to-transparent" />
             <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white/90 to-transparent" />
           </div>
-          
+
           {/* On mobile allow wrapping to multiple rows; on sm+ keep horizontal scroll */}
           <ul className="flex flex-wrap gap-2 pb-2 snap-x snap-mandatory scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 sm:flex-nowrap sm:overflow-x-auto">
             {amenities.map((a) => (

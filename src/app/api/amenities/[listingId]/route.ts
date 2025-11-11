@@ -34,11 +34,22 @@ export async function GET(
 
     let amenities: AmenityResponse[] = [];
     try {
-      amenities = await db.amenities.findMany({
+      // Read raw amenity rows from the DB. Note that older rows may have been
+      // stored with distances in meters (>1000). We'll normalize to kilometers
+      // in-memory before returning to the client so the UI is consistent.
+      const rawAmenities = await db.amenities.findMany({
         where: { listingId },
-        orderBy: { distance: 'asc' },
         select: { id: true, type: true, name: true, distance: true, latitude: true, longitude: true }
       });
+
+      // Normalize distances to kilometers and re-sort by distance
+      amenities = rawAmenities
+        .map(a => {
+          const dist = Number(a.distance ?? 0);
+          const normalized = dist > 1000 ? dist / 1000 : dist; // if >1000, assume meters -> convert
+          return { ...a, distance: Number(normalized.toFixed(3)) } as AmenityResponse;
+        })
+        .sort((x, y) => Number(x.distance) - Number(y.distance));
     } catch (dbErr) {
       console.error('DB error when fetching amenities for listing', listingId, dbErr);
       // If the DB read fails, return an empty list rather than a 500 so the

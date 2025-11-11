@@ -182,7 +182,8 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
     Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c * 1000; // Convert to meters
+  // Return distance in kilometers (consistent canonical unit across the app)
+  return R * c; // kilometers
 }
 
 export async function fetchNearbyAmenities({
@@ -238,7 +239,8 @@ export async function fetchNearbyAmenities({
                 longitude: lon
               };
             })
-            .filter((a): a is NonNullable<typeof a> => a !== null && a.distance <= maxRadius)
+            // `distance` is in kilometers now; convert the radius (meters) to km for comparison
+            .filter((a): a is NonNullable<typeof a> => a !== null && a.distance <= (maxRadius / 1000))
             .sort((a, b) => a.distance - b.distance)
             .slice(0, maxPerType);
 

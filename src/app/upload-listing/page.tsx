@@ -5,6 +5,6 @@ export const revalidate = 0;
 
 export default function UploadListingPage() {
   return (
-    <UpLoad/>
+    <UpLoad />
   )
 }
