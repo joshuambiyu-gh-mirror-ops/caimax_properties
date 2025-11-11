@@ -24,60 +24,6 @@ export const authOptions: AuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-    // Credentials provider to accept Google One Tap ID token
-    CredentialsProvider({
-      id: 'google-onetap',
-      name: 'Google One Tap',
-      credentials: {
-        id_token: { label: 'ID Token', type: 'text' },
-      },
-      async authorize(credentials) {
-        const idToken = credentials?.id_token as string | undefined;
-        if (!idToken) return null;
-
-        // Verify the ID token using Google's tokeninfo endpoint
-        try {
-          const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
-          if (!res.ok) {
-            console.error('Failed to verify id_token with Google tokeninfo:', await res.text());
-            return null;
-          }
-          const payload = await res.json() as {
-            aud?: string;
-            sub?: string;
-            name?: string;
-            email?: string;
-            picture?: string;
-          };
-
-          // Validate audience
-          const aud = payload.aud;
-          if (aud !== process.env.GOOGLE_CLIENT_ID && aud !== process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
-            console.error('ID token audience mismatch', aud);
-            return null;
-          }
-
-          // Ensure required fields exist
-          if (!payload.sub || !payload.email) {
-            console.error('ID token missing required fields', payload);
-            return null;
-          }
-
-          // Build a properly typed user object for NextAuth
-          const user: AuthUser = {
-            id: payload.sub,
-            name: payload.name ?? '',
-            email: payload.email,
-            image: payload.picture ?? undefined,
-          };
-
-          return user;
-        } catch (error) {
-          console.error('Error verifying Google id_token:', error);
-          return null;
-        }
-      },
-    }),
   ],
   session: {
     strategy: "jwt" as const,
