@@ -1,6 +1,5 @@
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import CredentialsProvider from "next-auth/providers/credentials";
 import type { AuthOptions } from "next-auth";
 import { db } from "@/db";
 import type { Account, Profile, Session, User as AuthUser } from "next-auth";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Link as LinkIcon } from 'lucide-react';
 import Map, { Marker } from 'react-map-gl';
 import { Input } from "./ui/input";
@@ -29,18 +29,32 @@ const MAPBOX_TOKEN = "pk.eyJ1IjoibWJpeXUiLCJhIjoiY203aXZ0cGQxMDBsdzJqc2EwdXB6Zng
 export function LocationInput({ onLocationSelect }: LocationInputProps) {
   const [locationLink, setLocationLink] = useState('');
   const [location, setLocation] = useState<LocationData | null>(null);
+  // Start with world view (0, 0) instead of hardcoded Nairobi
   const [viewState, setViewState] = useState<ViewStateWithDimensions>({
-    longitude: 39.8256,
-    latitude: 0.5360,
-    zoom: 6,
+    longitude: 0,
+    latitude: 0,
+    zoom: 2,
     bearing: 0,
     pitch: 0,
     padding: { top: 0, bottom: 0, left: 0, right: 0 },
-    width: 800,  // Default width
-    height: 180  // Match the container height
+    width: 800,
+    height: 180
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Clear all stale location data from browser storage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Clear any cached location data that might have been saved
+      localStorage.removeItem('lastLocation');
+      localStorage.removeItem('cachedLocation');
+      localStorage.removeItem('userLocation');
+      localStorage.removeItem('mapboxLocation');
+      sessionStorage.clear();
+      console.log('[LocationInput] Cleared all cached location data');
+    }
+  }, []);
 
   const getCurrentLocation = () => {
     setLoading(true);
@@ -54,11 +68,21 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
     
     // Clear any previous location data
     setLocation(null);
+    setLocationLink(''); // Clear location link input
+    
+    // Reset view to world view while fetching
+    setViewState(prev => ({
+      ...prev,
+      longitude: 0,
+      latitude: 0,
+      zoom: 2
+    }));
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          console.log('[LocationInput] Got fresh geolocation:', { latitude, longitude });
           await updateLocationFromCoordinates(latitude, longitude);
         } catch (error) {
           console.error('Location error:', error);
@@ -93,15 +117,23 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
       {
         enableHighAccuracy: true,
         timeout: 15000,
-        maximumAge: 0
+        maximumAge: 0 // Force fresh geolocation, don't use cached positions
       }
     );
   };
 
   const updateLocationFromCoordinates = async (lat: number, lng: number) => {
     try {
+      // Add cache-busting parameter to avoid stale Mapbox responses
+      const timestamp = Date.now();
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=address,place,neighborhood&limit=1&radius=50`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=address,place,neighborhood&limit=1&radius=50&t=${timestamp}`,
+        {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        }
       );
       
       if (!response.ok) {
@@ -109,7 +141,7 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
       }
       
       const data = await response.json();
-      console.log('Mapbox reverse geocode response:', data);
+      console.log('[LocationInput] Mapbox reverse geocode response:', data);
       
       if (!data.features || data.features.length === 0) {
         throw new Error('No location data found');
@@ -126,6 +158,7 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
       setLocation(locationData);
       setViewState(prev => ({ ...prev, longitude: lng, latitude: lat, zoom: 16 }));
       onLocationSelect(locationData);
+      console.log('[LocationInput] Location selected:', locationData);
     } catch (error) {
       console.error('Location error:', error);
       setError(`Failed to get location details: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -133,13 +166,12 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
   };
 
   const parseDMS = (dms: string) => {
-    // Match degrees, minutes, seconds with optional decimal and direction
     const pattern = /^(-?\d+)°?(\d+)?'?(\d+(\.\d+)?)?\"?([NSEW])?$/;
     const match = dms.trim().match(pattern);
     
     if (!match) return null;
     
-  const [, degrees, minutes = "0", seconds = "0", , direction] = match;
+    const [, degrees, minutes = "0", seconds = "0", , direction] = match;
     let dd = Number(degrees) + Number(minutes)/60 + Number(seconds)/(60*60);
     
     if (direction === 'S' || direction === 'W') {
@@ -152,7 +184,7 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
   const parseLocationLink = async () => {
     setLoading(true);
     setError(null);
-    setLocation(null); // Clear previous location
+    setLocation(null);
 
     try {
       // First, try to extract DMS coordinates
@@ -179,12 +211,8 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
         }
       }
 
-      // Parse the URL
       let urlToParse = locationLink;
       
-      // Handle short URLs and redirects.
-      // NOTE: resolving short URLs (maps.app.goo.gl / goo.gl) from the browser often fails due to CORS.
-      // Resolve the short URL on the server via an API route to avoid client-side fetch errors.
       if (locationLink.includes('goo.gl') || locationLink.includes('maps.app.goo.gl')) {
         try {
           const res = await fetch('/api/resolve-url', {
@@ -200,15 +228,11 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
 
               if (srvFinal) {
                 urlToParse = srvFinal;
-                console.log('Resolved short URL to (server):', urlToParse);
-              } else {
-                console.warn('Resolve API returned no finalUrl, using original link');
+                console.log('[LocationInput] Resolved short URL to:', urlToParse);
               }
 
-              // If the resolved URL doesn't contain coordinates, try to extract from the HTML snippet
               const coordsInUrl = /@(-?\d+\.\d+),(-?\d+\.\d+)/.test(urlToParse);
               if (!coordsInUrl && bodySnippet) {
-                // common patterns in Google Maps pages include @lat,lng and center=lat,lng
                 let m = bodySnippet.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
                 if (!m) m = bodySnippet.match(/center=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
                 if (!m) m = bodySnippet.match(/ll=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
@@ -217,34 +241,30 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
                   const lat = parseFloat(m[1]);
                   const lng = parseFloat(m[2]);
                   if (!isNaN(lat) && !isNaN(lng)) {
-                    console.log('Found coordinates in resolved HTML snippet:', { lat, lng });
+                    console.log('[LocationInput] Found coordinates in resolved HTML:', { lat, lng });
                     await updateLocationFromCoordinates(lat, lng);
                     return;
                   }
                 }
               }
             } else {
-              console.warn('Resolve API failed to expand short URL', await res.text());
+              console.warn('[LocationInput] Resolve API failed:', await res.text());
             }
         } catch (error) {
-          console.error('Error requesting server to resolve short URL:', error);
-          // Continue with original URL if resolving fails
+          console.error('[LocationInput] Error resolving short URL:', error);
         }
       }
 
       try {
         const url = new URL(urlToParse);
-        console.log('Parsing URL:', url.toString());
+        console.log('[LocationInput] Parsing URL:', url.toString());
 
-        // Parse Google Maps links
         if (url.hostname.includes('google.com/maps') || url.hostname.includes('goo.gl')) {
           const params = url.searchParams;
           let lat: number | null = null;
           let lng: number | null = null;
 
-          // Check URL parameters for coordinates
           for (const [, value] of params.entries()) {
-            // Look for coordinates in any parameter
             if (value?.includes(',')) {
               const coords = value.split(',').map(Number);
               if (coords.length >= 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
@@ -254,7 +274,6 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
             }
           }
 
-          // If no coordinates found in parameters, try URL path
           if (!lat || !lng) {
             const urlText = url.toString();
             const coords = urlText.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
@@ -264,7 +283,6 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
             }
           }
         }
-        // Parse WhatsApp location links
         else if (url.hostname.includes('maps.google.com')) {
           const params = url.searchParams;
           const q = params.get('q');
@@ -277,17 +295,17 @@ export function LocationInput({ onLocationSelect }: LocationInputProps) {
           }
         }
 
-        throw new Error('Could not extract location from the link. Please ensure it\'s a valid Google Maps or WhatsApp location link.');
+        throw new Error('Could not extract location from the link.');
       } catch (error) {
-        console.error('Error parsing URL:', error);
+        console.error('[LocationInput] Error parsing URL:', error);
         throw new Error('Invalid URL format. Please ensure you\'ve copied the entire link.');
       }
     } catch (error) {
-      console.error('Error parsing location:', error);
+      console.error('[LocationInput] Error parsing location:', error);
       if (error instanceof Error) {
         setError(error.message);
       } else {
-        setError('Invalid location link. Please ensure you\'ve copied the entire link.');
+        setError('Invalid location link.');
       }
     } finally {
       setLoading(false);

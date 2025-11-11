@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image"; // Import Image component
 
@@ -9,8 +9,19 @@ import HeaderAuth from "@/components/header-auth";
 import SearchBar from "./ui/SearchBar";
 
 function SparklesCore({ count = 48, particleColor = "#FFFFFF", className = "" }: { count?: number; particleColor?: string; className?: string }) {
-  const particles = useMemo(() => {
-    return Array.from({ length: count }).map(() => ({
+  const [particles, setParticles] = useState<Array<{
+    left: number;
+    top: number;
+    size: number;
+    delay: number;
+    duration: number;
+    opacity: number;
+    rotate: number;
+  }> | null>(null);
+  const [animName, setAnimName] = useState("");
+
+  useEffect(() => {
+    const newParticles = Array.from({ length: count }).map(() => ({
       left: Math.random() * 100,
       top: Math.random() * 100,
       size: 1 + Math.random() * 8,
@@ -19,23 +30,25 @@ function SparklesCore({ count = 48, particleColor = "#FFFFFF", className = "" }:
       opacity: 0.6 + Math.random() * 0.6,
       rotate: Math.random() * 360,
     }));
+    setParticles(newParticles);
+    setAnimName(`sparkleAnim_${Math.floor(Math.random() * 100000)}`);
   }, [count]);
-
-  const animName = useMemo(() => `sparkleAnim_${Math.floor(Math.random() * 100000)}`, []);
 
   return (
     <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden>
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @keyframes ${animName} {
-          0% { transform: translateY(0) scale(0.6) rotate(0deg); opacity: 0; }
-          10% { opacity: 1; }
-          50% { transform: translateY(-8px) scale(1) rotate(45deg); opacity: 0.9; }
-          100% { transform: translateY(-18px) scale(0.8) rotate(90deg); opacity: 0; }
-        }
-      ` }} />
+      {animName && (
+        <style dangerouslySetInnerHTML={{
+          __html: `
+          @keyframes ${animName} {
+            0% { transform: translateY(0) scale(0.6) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            50% { transform: translateY(-8px) scale(1) rotate(45deg); opacity: 0.9; }
+            100% { transform: translateY(-18px) scale(0.8) rotate(90deg); opacity: 0; }
+          }
+        ` }} />
+      )}
 
-      {particles.map((p, i) => (
+      {particles?.map((p, i) => (
         <span
           key={i}
           style={{

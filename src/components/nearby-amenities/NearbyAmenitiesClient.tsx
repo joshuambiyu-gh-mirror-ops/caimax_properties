@@ -24,6 +24,12 @@ interface Amenity {
 export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenity[] }) {
   const handleClick = (a: Amenity) => {
     if (!a.latitude || !a.longitude) return;
+    // Normalize distance: DB value should be in km, but older data or other sources
+    // might store meters. If a.distance seems unreasonably large (>1000),
+    // treat it as meters and convert to km.
+    const rawDistance = a.distance ?? 0;
+    const normalizedDistanceKm = rawDistance > 1000 ? rawDistance / 1000 : rawDistance;
+
     // Dispatch a CustomEvent that the map listens for
     const ev = new CustomEvent('caimax:flyToAmenity', {
       detail: {
@@ -32,7 +38,7 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
         longitude: a.longitude,
         name: a.name,
         type: a.type,
-        distance: a.distance
+        distance: normalizedDistanceKm
       },
     });
     window.dispatchEvent(ev);
@@ -72,7 +78,15 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <div className="text-xs sm:text-sm font-medium text-gray-900 truncate">{a.name || a.type}</div>
-                      <div className="text-[11px] text-gray-500">{Math.round((a.distance ?? 0) * 1000)}m</div>
+                      {/* Display distance: normalize noisy data, then format meters/km */}
+                      {(() => {
+                        const raw = a.distance ?? 0;
+                        const km = raw > 1000 ? raw / 1000 : raw; // if stored as meters, convert
+                        if (km < 1) {
+                          return <div className="text-[11px] text-gray-500">{Math.round(km * 1000)}m</div>;
+                        }
+                        return <div className="text-[11px] text-gray-500">{km.toFixed(2)}km</div>;
+                      })()}
                     </div>
                   </div>
                 </button>
