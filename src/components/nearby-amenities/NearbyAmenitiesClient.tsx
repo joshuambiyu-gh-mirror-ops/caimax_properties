@@ -24,7 +24,7 @@ interface Amenity {
 export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenity[] }) {
   const handleClick = (a: Amenity) => {
     if (!a.latitude || !a.longitude) return;
-    
+
     const rawDistance = a.distance ?? 0;
     const normalizedDistanceKm = rawDistance > 1000 ? rawDistance / 1000 : rawDistance;
 

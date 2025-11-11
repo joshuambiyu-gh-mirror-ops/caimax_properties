@@ -136,7 +136,7 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
     padding: { top: 0, right: 0, bottom: 0, left: 0 },
   });
   const [mounted, setMounted] = useState(false);
-  
+
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
   interface RouteGeoJSON {
@@ -253,10 +253,10 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
     function performMapAnimation(mapboxMap: any, geom: any, d: any) {
       try {
         if (geom && geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
-          setRouteGeoJSON({ 
-            type: 'Feature', 
-            geometry: geom, 
-            properties: { timestamp: Date.now() } 
+          setRouteGeoJSON({
+            type: 'Feature',
+            geometry: geom,
+            properties: { timestamp: Date.now() }
           });
 
           const coords = geom.coordinates as [number, number][];
@@ -266,22 +266,22 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
           const maxLon = Math.max(...lons);
           const minLat = Math.min(...lats);
           const maxLat = Math.max(...lats);
-          
-          mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], { 
-            padding: 80, 
+
+          mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], {
+            padding: 80,
             duration: 1200,
             pitch: 0,
             bearing: 0
           });
         } else {
           if (typeof mapboxMap.flyTo === 'function') {
-            mapboxMap.flyTo({ 
-              center: [d.longitude, d.latitude], 
-              zoom: Math.max(viewState.zoom ?? 15, 16), 
-              bearing: 0, 
+            mapboxMap.flyTo({
+              center: [d.longitude, d.latitude],
+              zoom: Math.max(viewState.zoom ?? 15, 16),
+              bearing: 0,
               pitch: 0,
-              speed: 1.2, 
-              curve: 1.4 
+              speed: 1.2,
+              curve: 1.4
             });
           }
         }
@@ -293,7 +293,7 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
     async function onFlyTo(e: FlyToEvent) {
       const d = e?.detail;
       if (!d || typeof d.latitude !== 'number' || typeof d.longitude !== 'number') return;
-      
+
       // Lock scroll position during animation to prevent page jump
       const scrollTop = window.scrollY;
       const scrollLock = () => {
@@ -301,9 +301,9 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
           window.scrollTo(0, scrollTop);
         }
       };
-      
+
       window.addEventListener('scroll', scrollLock, { passive: false });
-      
+
       const place: Place = {
         type: (d.type as Place['type']) || 'restaurant',
         name: d.name || d.id || 'Amenity',
@@ -315,7 +315,7 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
       setSelectedPlace(place);
 
       const geom = await fetchRouteGeoJSON(lng, lat, d.longitude, d.latitude);
-      
+
       try {
         const mapboxMap = mapRef.current?.getMap?.();
         if (!mapboxMap) {
@@ -324,7 +324,7 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
         }
 
         performMapAnimation(mapboxMap, geom, d);
-        
+
         // Release scroll lock after animation
         setTimeout(() => {
           window.removeEventListener('scroll', scrollLock);
@@ -359,71 +359,71 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
   }, [lat, lng, viewState.zoom]);
 
   return (
-  <div className="w-full h-full">
+    <div className="w-full h-full">
       {mounted ? (
-          <Map
-            ref={mapRef}
-            initialViewState={viewState}
-            style={{ width: '100%', height: '100%' }}
-            mapStyle="mapbox://styles/mapbox/streets-v12"
-            mapboxAccessToken={MAPBOX_TOKEN}
+        <Map
+          ref={mapRef}
+          initialViewState={viewState}
+          style={{ width: '100%', height: '100%' }}
+          mapStyle="mapbox://styles/mapbox/streets-v12"
+          mapboxAccessToken={MAPBOX_TOKEN}
+        >
+          {/* Main property marker */}
+          <Marker
+            longitude={lng}
+            latitude={lat}
+            anchor="bottom"
           >
-            {/* Main property marker */}
+            <MapPin className="w-8 h-8 text-red-500 hover:text-red-700 cursor-pointer" />
+          </Marker>
+
+          {/* Nearby places markers */}
+          {showPlaces && nearbyPlaces.map((place, index) => (
             <Marker
-              longitude={lng}
-              latitude={lat}
+              key={index}
+              longitude={place.coordinates[0]}
+              latitude={place.coordinates[1]}
               anchor="bottom"
+              onClick={(e: { originalEvent?: Event }) => {
+                e?.originalEvent?.stopPropagation?.();
+                setSelectedPlace(selectedPlace?.name === place.name ? null : place);
+              }}
             >
-              <MapPin className="w-8 h-8 text-red-500 hover:text-red-700 cursor-pointer" />
+              {place.icon}
             </Marker>
+          ))}
 
-            {/* Nearby places markers */}
-            {showPlaces && nearbyPlaces.map((place, index) => (
-              <Marker
-                key={index}
-                longitude={place.coordinates[0]}
-                latitude={place.coordinates[1]}
-                anchor="bottom"
-                onClick={(e: { originalEvent?: Event }) => {
-                  e?.originalEvent?.stopPropagation?.();
-                  setSelectedPlace(selectedPlace?.name === place.name ? null : place);
-                }}
-              >
-                {place.icon}
-              </Marker>
-            ))}
+          {/* Selected place popup (heading removed per request) */}
+          {selectedPlace && (
+            <Popup
+              longitude={selectedPlace.coordinates[0]}
+              latitude={selectedPlace.coordinates[1]}
+              anchor="bottom"
+              onClose={() => setSelectedPlace(null)}
+              offset={25}
+            >
+              <div className="p-2 min-w-[120px]">
+                <p className="text-sm text-gray-600 whitespace-nowrap">{formatDistance(selectedPlace.distanceKm)}</p>
+              </div>
+            </Popup>
+          )}
 
-            {/* Selected place popup (heading removed per request) */}
-            {selectedPlace && (
-              <Popup
-                longitude={selectedPlace.coordinates[0]}
-                latitude={selectedPlace.coordinates[1]}
-                anchor="bottom"
-                onClose={() => setSelectedPlace(null)}
-                offset={25}
-              >
-                <div className="p-2 min-w-[120px]">
-                  <p className="text-sm text-gray-600 whitespace-nowrap">{formatDistance(selectedPlace.distanceKm)}</p>
-                </div>
-              </Popup>
-            )}
+          {/* Route line from listing to selected amenity */}
+          {routeGeoJSON && (
+            <Source id="route" type="geojson" data={routeGeoJSON}>
+              <Layer
+                id="route-line"
+                type="line"
+                paint={{ 'line-color': '#2563eb', 'line-width': 4, 'line-opacity': 0.9 }}
+              />
+            </Source>
+          )}
 
-            {/* Route line from listing to selected amenity */}
-            {routeGeoJSON && (
-              <Source id="route" type="geojson" data={routeGeoJSON}>
-                <Layer
-                  id="route-line"
-                  type="line"
-                  paint={{ 'line-color': '#2563eb', 'line-width': 4, 'line-opacity': 0.9 }}
-                />
-              </Source>
-            )}
-
-            <NavigationControl position="top-right" />
-          </Map>
-        ) : (
-          <div style={{ width: '100%', height: '100%' }} />
-        )}
+          <NavigationControl position="top-right" />
+        </Map>
+      ) : (
+        <div style={{ width: '100%', height: '100%' }} />
+      )}
     </div>
   );
 }
