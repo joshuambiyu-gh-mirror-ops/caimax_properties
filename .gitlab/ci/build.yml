@@ -48,8 +48,8 @@ build_docker_image:
       EOF
     
     # Build Docker image
-  - echo "📦 Building image tag: docker.io/joshuamumo/caimax_client:${CI_COMMIT_SHORT_SHA}"
-  - export REPO="docker.io/joshuamumo/caimax_client"
+    - echo "📦 Building image tag: docker.io/joshuamumo/caimax_client:${CI_COMMIT_SHORT_SHA}"
+    - export REPO="docker.io/joshuamumo/caimax_client"
     - export TAG="${CI_COMMIT_SHORT_SHA}"
     - docker build -t ${REPO}:${TAG} .
     - echo "🔐 Logging in to Docker Hub..."
