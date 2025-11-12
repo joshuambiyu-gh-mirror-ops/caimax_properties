@@ -1,0 +1,78 @@
+# ============================================================================
+# BUILD STAGE: Build and push Docker image
+# Equivalent to: .github/workflows/ci.yml
+# ============================================================================
+
+build_docker_image:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: "/certs"
+  tags:
+    - docker
+    - caimax-production
+  rules:
+    # Only run when manually started from the GitLab UI or via API (emulates GitHub's manual build)
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "api"
+      when: on_success
+    - when: never
+  script:
+    # Checkout is automatic in GitLab
+    - echo "🔨 Building Docker image..."
+    
+    # Create .env file from GitLab CI/CD variables
+    - |
+      cat > .env << EOF
+      GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      NEXT_GITHUB_CLIENT_ID=${NEXT_GITHUB_CLIENT_ID}
+      NEXT_GITHUB_CLIENT_SECRET=${NEXT_GITHUB_CLIENT_SECRET}
+      NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      NEXTAUTH_URL=${NEXTAUTH_URL}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+      DATABASE_URL=${DATABASE_URL}
+      MAPBOX_TOKEN=${MAPBOX_TOKEN}
+      AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION=${AWS_REGION}
+      AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
+      RESEND_API_KEY=${RESEND_API_KEY}
+      AGENT_EMAIL=${AGENT_EMAIL}
+      SEND_FROM=${SEND_FROM}
+      NEXT_PUBLIC_AGENT_EMAIL=${NEXT_PUBLIC_AGENT_EMAIL}
+      EOF
+    
+    # Build Docker image
+  - echo "📦 Building image tag: docker.io/joshuamumo/caimax_client:${CI_COMMIT_SHORT_SHA}"
+  - export REPO="docker.io/joshuamumo/caimax_client"
+    - export TAG="${CI_COMMIT_SHORT_SHA}"
+    - docker build -t ${REPO}:${TAG} .
+    - echo "🔐 Logging in to Docker Hub..."
+    - echo ${DOCKER_HUB_TOKEN} | docker login -u joshuamumo --password-stdin
+    - echo "⬆️  Pushing image ${REPO}:${TAG} to registry"
+    - docker push ${REPO}:${TAG}
+    - echo "✅ Pushed ${REPO}:${TAG}"
+    # update latest tag as convenience
+    - docker tag ${REPO}:${TAG} ${REPO}:latest || true
+    - docker push ${REPO}:latest || true
+    
+    # Note: Deploy is handled by a child pipeline trigger job below (no external token needed)
+  after_script:
+    - docker logout
+
+
+trigger_deploy_child:
+  stage: deploy
+  needs:
+    - job: build_docker_image
+  when: on_success
+  trigger:
+    include: .gitlab/ci/deploy.yml
+    strategy: depend
+  variables:
+    IMAGE_TAG: "${TAG}"

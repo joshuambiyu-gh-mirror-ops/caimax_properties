@@ -1,0 +1,16 @@
+include:
+  - local: .gitlab/ci/build.yml
+  - local: .gitlab/ci/deploy.yml
+  - local: .gitlab/ci/cleanup.yml
+
+stages:
+  - build
+  - deploy
+  - cleanup
+
+variables:
+  DOCKER_REGISTRY: "docker.io"
+  DOCKER_REPOSITORY: "joshuamumo/caimax_client"
+  DOCKER_IMAGE: "${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}:latest"
+  NODE_VERSION: "18"
+  PNPM_VERSION: "8"

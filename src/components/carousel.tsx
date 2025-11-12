@@ -48,8 +48,9 @@ export default function Carousel({
           <h1 className="text-lg sm:text-xl px-1 text-gray-800 font-medium line-clamp-1 h-7 overflow-hidden" title={`${listing.propertyType} in ${listing.location}`}>
             {listing.propertyType} in {listing.location}
           </h1>
-        <div className="aspect-[3/4 max-w-sm h-[400px] flex flex-col overflow-hidden relative w-full mx-auto shadow-lg rounded-lg hover:shadow-red-500/50 transition-shadow transition-transform hover:translate-z-60 transition-duration-300 duration-300 cursor-pointer hover:scale-105">
-          <div className="flex-1 relative flex flex-col">
+          <div className="aspect-[3/4] max-w-sm h-[400px] flex flex-col overflow-hidden relative w-full mx-auto shadow-lg rounded-lg hover:shadow-red-500/50 transition-all duration-300 cursor-pointer hover:scale-105"
+          >
+            <div className="flex-1 relative flex flex-col">
         {/* Slide Container */}
         <div
           className="flex transition-transform ease-out duration-500 h-full"
@@ -95,10 +96,11 @@ export default function Carousel({
             />
           ))}
         </div>
+
       </div>
 
-          {/* Description - always at the bottom */}
-          <div className="bg-white border-t border-gray-300 p-2 rounded-b-lg relative z-10 flex-none flex flex-col justify-center min-h-[60px]">
+        {/* Description - always at the bottom */}
+        <div className="bg-white border-t border-gray-300 p-2 rounded-b-lg relative z-10 flex-none flex flex-col justify-center min-h-[60px]">
             <div className="flex items-center justify-between text-gray-700">
               <span className="flex items-center gap-4 w-full">
                 <div className="flex items-center max-w-[90px]">
@@ -122,9 +124,9 @@ export default function Carousel({
               </span>
             </div>
           </div>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
     </>
   );
 }

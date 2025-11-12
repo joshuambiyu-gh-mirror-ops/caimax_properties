@@ -25,6 +25,7 @@ interface MapboxListingMapProps {
   lat: number;
   lng: number;
   listingId: string;
+  headerOffset?: number; // pixels to offset top-right controls so they're not hidden by header
 }
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoibWJpeXUiLCJhIjoiY203aXZ0cGQxMDBsdzJqc2EwdXB6ZngxciJ9.tY4trIwdOSdm1_Z0EXq-CQ";
@@ -118,9 +119,9 @@ const fetchNearbyPlaces = async (listingId: string): Promise<Place[]> => {
 
 
 
-export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingMapProps) {
+export default function MapboxListingMap({ lat, lng, listingId, headerOffset = 0 }: MapboxListingMapProps) {
   const mapRef = useRef<MapRef>(null);
-  const [viewState, setViewState] = useState<ViewState & {
+  const [viewState] = useState<ViewState & {
     width: number;
     height: number;
     padding: { top: number; right: number; bottom: number; left: number };
@@ -250,16 +251,30 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
       readonly timeStamp: number;
     }
 
-    function performMapAnimation(mapboxMap: any, geom: any, d: any) {
+    type MaybeRoute = { type?: string; coordinates?: [number, number][] } | null;
+    type MapboxMapLike = { fitBounds: (bounds: number[][], opts: object) => void };
+    type MapboxMapLikeWithFlyTo = { flyTo: (opts: object) => void };
+
+    function hasFitBounds(x: unknown): x is MapboxMapLike {
+      return typeof x === 'object' && x !== null && 'fitBounds' in (x as object);
+    }
+
+    function hasFlyTo(x: unknown): x is MapboxMapLikeWithFlyTo {
+      return typeof x === 'object' && x !== null && 'flyTo' in (x as object);
+    }
+
+    function performMapAnimation(mapboxMap: unknown, geom: MaybeRoute, d: FlyToEventDetail) {
       try {
         if (geom && geom.type === 'LineString' && Array.isArray(geom.coordinates)) {
+          const coords = geom.coordinates as [number, number][];
           setRouteGeoJSON({
             type: 'Feature',
-            geometry: geom,
+            geometry: {
+              type: 'LineString',
+              coordinates: coords
+            },
             properties: { timestamp: Date.now() }
           });
-
-          const coords = geom.coordinates as [number, number][];
           const lons = coords.map(c => c[0]);
           const lats = coords.map(c => c[1]);
           const minLon = Math.min(...lons);
@@ -267,14 +282,16 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
           const minLat = Math.min(...lats);
           const maxLat = Math.max(...lats);
 
-          mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], {
-            padding: 80,
-            duration: 1200,
-            pitch: 0,
-            bearing: 0
-          });
+          if (hasFitBounds(mapboxMap)) {
+            mapboxMap.fitBounds([[minLon, minLat], [maxLon, maxLat]], {
+              padding: 80,
+              duration: 1200,
+              pitch: 0,
+              bearing: 0
+            });
+          }
         } else {
-          if (typeof mapboxMap.flyTo === 'function') {
+          if (hasFlyTo(mapboxMap)) {
             mapboxMap.flyTo({
               center: [d.longitude, d.latitude],
               zoom: Math.max(viewState.zoom ?? 15, 16),
@@ -358,8 +375,27 @@ export default function MapboxListingMap({ lat, lng, listingId }: MapboxListingM
     };
   }, [lat, lng, viewState.zoom]);
 
+  useEffect(() => {
+    // Inject a small stylesheet to offset Mapbox controls so they don't sit under the header
+    const styleId = 'mapbox-controls-offset';
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    const offset = Math.max(0, Math.round(headerOffset || 0)) + 8; // add small gap
+    styleEl.textContent = `
+      .mapbox-map-container .mapboxgl-ctrl-top-right { top: ${offset}px !important; }
+      .mapbox-map-container .mapboxgl-ctrl { z-index: 30 !important; }
+    `;
+    return () => {
+      if (styleEl) styleEl.textContent = '';
+    };
+  }, [headerOffset]);
+
   return (
-    <div className="w-full h-full">
+    <div className="mapbox-map-container w-full h-full">
       {mounted ? (
         <Map
           ref={mapRef}
