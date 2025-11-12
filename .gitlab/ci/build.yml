@@ -15,17 +15,15 @@ build_docker_image:
     - docker
     - caimax-production
   rules:
-    # Only run when manually started from the GitLab UI or via API (emulates GitHub's manual build)
     - if: $CI_PIPELINE_SOURCE == "web"
       when: on_success
     - if: $CI_PIPELINE_SOURCE == "api"
       when: on_success
     - when: never
   script:
-    # Checkout is automatic in GitLab
     - echo "🔨 Building Docker image..."
-    
-    # Create .env file from GitLab CI/CD variables
+    - export REPO="docker.io/joshuamumo/caimax_client"
+    - export TAG="${CI_COMMIT_SHORT_SHA}"
     - |
       cat > .env << EOF
       GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
@@ -46,22 +44,15 @@ build_docker_image:
       SEND_FROM=${SEND_FROM}
       NEXT_PUBLIC_AGENT_EMAIL=${NEXT_PUBLIC_AGENT_EMAIL}
       EOF
-    
-    # Build Docker image
-    - echo "📦 Building image tag: docker.io/joshuamumo/caimax_client:${CI_COMMIT_SHORT_SHA}"
-    - export REPO="docker.io/joshuamumo/caimax_client"
-    - export TAG="${CI_COMMIT_SHORT_SHA}"
+    - echo "📦 Building image tag: ${REPO}:${TAG}"
     - docker build -t ${REPO}:${TAG} .
     - echo "🔐 Logging in to Docker Hub..."
     - echo ${DOCKER_HUB_TOKEN} | docker login -u joshuamumo --password-stdin
-    - echo "⬆️  Pushing image ${REPO}:${TAG} to registry"
+    - echo "⬆️ Pushing image ${REPO}:${TAG} to registry"
     - docker push ${REPO}:${TAG}
     - echo "✅ Pushed ${REPO}:${TAG}"
-    # update latest tag as convenience
     - docker tag ${REPO}:${TAG} ${REPO}:latest || true
     - docker push ${REPO}:latest || true
-    
-    # Note: Deploy is handled by a child pipeline trigger job below (no external token needed)
   after_script:
     - docker logout
 
@@ -75,4 +66,4 @@ trigger_deploy_child:
     include: .gitlab/ci/deploy.yml
     strategy: depend
   variables:
-    IMAGE_TAG: "${TAG}"
+    IMAGE_TAG: "${CI_COMMIT_SHORT_SHA}"

@@ -10,7 +10,6 @@ deploy_to_production:
     - docker
     - caimax-production
   rules:
-    # Run when IMAGE_TAG is provided (child pipeline trigger) or when a main branch pipeline runs
     - if: $IMAGE_TAG
       when: on_success
     - if: $CI_COMMIT_BRANCH == "main"
@@ -18,44 +17,29 @@ deploy_to_production:
     - when: never
   script:
     - echo "🚀 Starting deployment to production..."
-
-    # Determine which tag to deploy: prefer IMAGE_TAG (set by build trigger), else fallback to commit short SHA
     - export TAG="${IMAGE_TAG:-${CI_COMMIT_SHORT_SHA}}"
     - echo "Using image tag: ${TAG}"
-
-    # Stop and remove existing container
+    - export REPO="docker.io/joshuamumo/caimax_client"
     - echo "🛑 Stopping existing caimax_client container..."
     - sudo docker stop caimax_client || true
     - sudo docker rm -f caimax_client || true
-
-    # Cleanup Docker resources
     - |
       echo "🧹 Cleaning up Docker resources..."
       echo "Initial disk space:"
       df -h
-
       echo "Stopping other running containers..."
       sudo docker ps -q | xargs -r sudo docker stop || true
-
       echo "Removing old containers..."
       sudo docker container rm -f $(sudo docker container ls -aq) || true
-
       echo "Cleaning up Docker networks..."
       sudo docker network prune -f
-
       echo "Running system prune..."
       sudo docker system prune -a -f --volumes
-
       echo "Final disk space after cleanup:"
       df -h
-
-    # Pull image built in previous stage (use image tag passed from build)
-    - echo "📥 Pulling Docker image docker.io/joshuamumo/caimax_client:${TAG}..."
-    - export REPO="docker.io/joshuamumo/caimax_client"
+    - echo "📥 Pulling Docker image ${REPO}:${TAG}..."
     - sudo docker pull ${REPO}:${TAG} || true
     - sudo docker pull ${REPO}:latest || true
-
-    # Create .env file from GitLab CI/CD variables
     - echo "📝 Creating .env file..."
     - |
       cat > .env << EOF
@@ -77,23 +61,18 @@ deploy_to_production:
       SEND_FROM=${SEND_FROM}
       NEXT_PUBLIC_AGENT_EMAIL=${NEXT_PUBLIC_AGENT_EMAIL}
       EOF
-
-    # Free up port 80 if needed
     - |
       echo "🔌 Checking for processes using port 80..."
       sudo lsof -i :80 || true
       sudo fuser -k 80/tcp || true
       sleep 5
-
-    # Run Docker container
     - |
-      echo "▶️  Starting Docker container..."
+      echo "▶️ Starting Docker container..."
       if ! sudo docker run --env-file .env -d --name caimax_client -p 80:3000 -p 5555:5555 ${REPO}:${TAG}; then
-        echo "⚠️  First attempt failed, waiting 10 seconds and retrying..."
+        echo "⚠️ First attempt failed, waiting 10 seconds and retrying..."
         sleep 10
         sudo docker run --env-file .env -d --name caimax_client -p 80:3000 -p 5555:5555 ${REPO}:${TAG}
       fi
-
       echo "✅ Container started successfully"
       sudo docker ps
   after_script:
