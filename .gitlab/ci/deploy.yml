@@ -50,10 +50,10 @@ deploy_to_production:
       df -h
 
     # Pull image built in previous stage (use image tag passed from build)
-  - echo "📥 Pulling Docker image docker.io/joshuamumo/caimax_client:${TAG}..."
-  - export REPO="docker.io/joshuamumo/caimax_client"
-  - sudo docker pull ${REPO}:${TAG} || true
-  - sudo docker pull ${REPO}:latest || true
+    - echo "📥 Pulling Docker image docker.io/joshuamumo/caimax_client:${TAG}..."
+    - export REPO="docker.io/joshuamumo/caimax_client"
+    - sudo docker pull ${REPO}:${TAG} || true
+    - sudo docker pull ${REPO}:latest || true
 
     # Create .env file from GitLab CI/CD variables
     - echo "📝 Creating .env file..."
