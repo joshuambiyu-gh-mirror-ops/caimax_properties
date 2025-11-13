@@ -3,7 +3,6 @@ stages:
   - dockerize
   - deploy
 
-# Global environment variables
 variables:
   IMAGE_NAME: joshuamumo/caimax_client
   IMAGE_TAG: latest
@@ -26,7 +25,6 @@ variables:
   SEND_FROM: $SEND_FROM
   NEXT_PUBLIC_AGENT_EMAIL: $NEXT_PUBLIC_AGENT_EMAIL
 
-# All jobs inherit these default settings
 default:
   tags:
     - caimax-production
@@ -57,4 +55,11 @@ deploy_ec2:
   before_script:
     - docker stop caimax_client || true
     - docker rm caimax_client || true
-    - docker image pr
+    - docker image prune -f
+  script:
+    - echo "$DOCKER_HUB_TOKEN" | docker login -u "joshuamumo" --password-stdin
+    - printenv | grep -E 'GOOGLE_|NEXT_|DATABASE_|MAPBOX_|AWS_|RESEND_|AGENT_|SEND_' > .env
+    - docker pull $IMAGE_NAME:$IMAGE_TAG
+    - docker run -d --env-file .env --name caimax_client -p 80:3000 --restart unless-stopped $IMAGE_NAME:$IMAGE_TAG
+  only:
+    - main
