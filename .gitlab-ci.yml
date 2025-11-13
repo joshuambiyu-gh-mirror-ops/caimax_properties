@@ -1,9 +1,4 @@
-include:
-  - local: .gitlab/ci/build.yml
-  - local: .gitlab/ci/deploy.yml
-  - local: .gitlab/ci/cleanup.yml
-
-stages:
-  - build
-  - deploy
-  - cleanup
+run_build:
+  image: node:20-alpine
+  script:
+    - npm run build
