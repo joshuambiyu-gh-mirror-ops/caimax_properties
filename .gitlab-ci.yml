@@ -1,5 +1,4 @@
 stages:
-  - build
   - dockerize
   - deploy
 
@@ -29,11 +28,6 @@ default:
   tags:
     - caimax-production
 
-run_build:
-  stage: build
-  script:
-    - npm ci
-    - npm run build
 
 build_and_push_docker_image:
   stage: dockerize
