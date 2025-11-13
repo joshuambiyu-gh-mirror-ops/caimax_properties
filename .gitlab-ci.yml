@@ -32,8 +32,9 @@ deploy_ec2:
     - ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
   script:
     - |
-      ssh -i ~/.ssh/id_rsa ubuntu@$EC2_HOST << 'EOF'
+      ssh -i ~/.ssh/id_rsa ubuntu@$EC2_HOST << EOF
         set -e
+
         echo "Logging into Docker..."
         echo "$DOCKER_HUB_TOKEN" | docker login -u "joshuamumo" --password-stdin
 
@@ -46,6 +47,6 @@ deploy_ec2:
         printenv | grep -E 'GOOGLE_|NEXT_|DATABASE_|MAPBOX_|AWS_|RESEND_|AGENT_|SEND_' > .env
         docker pull $IMAGE_NAME:$IMAGE_TAG
         docker run -d --env-file .env --name caimax_client -p 80:3000 --restart unless-stopped $IMAGE_NAME:$IMAGE_TAG
-      EOF
+EOF
   only:
     - main
