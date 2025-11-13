@@ -1,0 +1,74 @@
+# ============================================================================
+# CLEANUP STAGE: Scheduled cleanup
+# Equivalent to: .github/workflows/cleanup.yml
+# Runs daily at 00:00 UTC or manually
+# ============================================================================
+
+scheduled_cleanup:
+  stage: cleanup
+  tags:
+    - docker  # Self-hosted runner
+  only:
+    - schedules  # Only run on scheduled pipelines
+  script:
+    - echo "🧹 Running scheduled cleanup..."
+    
+    # System cleanup
+    - |
+      echo "📦 System cleanup..."
+      sudo apt-get clean
+      sudo apt-get autoremove -y
+      
+      echo "Initial disk space:"
+      df -h
+      
+      # Docker cleanup
+      echo "🐳 Cleaning up Docker resources..."
+      sudo docker container prune -f
+      sudo docker image prune -a -f
+      sudo docker volume prune -f
+      sudo docker network prune -f
+      
+      echo "Final disk space:"
+      df -h
+      
+      # Clean up old logs
+      echo "📋 Cleaning up old logs (older than 7 days)..."
+      sudo find /var/log -type f -name "*.log" -mtime +7 -delete
+      sudo find /var/log -type f -name "*.gz" -mtime +7 -delete
+      
+      # Clean package manager caches
+      echo "📦 Cleaning up package caches..."
+      npm cache clean --force
+      which yarn && yarn cache clean || echo "Yarn not installed"
+      pnpm store prune
+      
+      echo "✅ Cleanup completed successfully!"
+
+# Optional: Add a manual cleanup job (allows manual trigger from UI)
+manual_cleanup:
+  stage: cleanup
+  tags:
+    - docker
+  when: manual  # Only run when manually triggered
+  script:
+    - echo "🧹 Running manual cleanup..."
+    
+    - |
+      echo "📦 System cleanup..."
+      sudo apt-get clean
+      sudo apt-get autoremove -y
+      
+      echo "Initial disk space:"
+      df -h
+      
+      echo "🐳 Cleaning up Docker resources..."
+      sudo docker container prune -f
+      sudo docker image prune -a -f
+      sudo docker volume prune -f
+      sudo docker network prune -f
+      
+      echo "Final disk space:"
+      df -h
+      
+      echo "✅ Manual cleanup completed successfully!"

@@ -1,4 +1,63 @@
+stages:
+  - build
+  - dockerize
+  - deploy
+
+variables:
+  IMAGE_NAME: joshuamumo/caimax_client
+  IMAGE_TAG: latest
+  DOCKER_HOST: unix:///var/run/docker.sock
+  GOOGLE_CLIENT_ID: $GOOGLE_CLIENT_ID
+  GOOGLE_CLIENT_SECRET: $GOOGLE_CLIENT_SECRET
+  NEXT_GITHUB_CLIENT_ID: $NEXT_GITHUB_CLIENT_ID
+  NEXT_GITHUB_CLIENT_SECRET: $NEXT_GITHUB_CLIENT_SECRET
+  NEXTAUTH_SECRET: $NEXTAUTH_SECRET
+  NEXTAUTH_URL: $NEXTAUTH_URL
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: $NEXT_PUBLIC_GOOGLE_CLIENT_ID
+  DATABASE_URL: $DATABASE_URL
+  MAPBOX_TOKEN: $MAPBOX_TOKEN
+  AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+  AWS_REGION: $AWS_REGION
+  AWS_BUCKET_NAME: $AWS_BUCKET_NAME
+  RESEND_API_KEY: $RESEND_API_KEY
+  AGENT_EMAIL: $AGENT_EMAIL
+  SEND_FROM: $SEND_FROM
+  NEXT_PUBLIC_AGENT_EMAIL: $NEXT_PUBLIC_AGENT_EMAIL
+
 run_build:
+  stage: build
   image: node:20-alpine
   script:
+    - npm ci
     - npm run build
+
+build_and_push_docker_image:
+  stage: dockerize
+  image: docker:latest
+  services: 
+    - docker:dind 
+  before_script:
+    - echo "$DOCKER_HUB_TOKEN" | docker login -u "joshuamumo" --password-stdin
+  script:
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+    - docker push $IMAGE_NAME:$IMAGE_TAG
+  only:
+    - main
+
+deploy_ec2:
+  stage: deploy
+  image: docker:latest
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+  before_script:
+    - docker stop caimax_client || true
+    - docker rm caimax_client || true
+    - docker image prune -f
+  script:
+    - echo "$DOCKER_HUB_TOKEN" | docker login -u "joshuamumo" --password-stdin
+    - printenv | grep -E 'GOOGLE_|NEXT_|DATABASE_|MAPBOX_|AWS_|RESEND_|AGENT_|SEND_' > .env
+    - docker pull $IMAGE_NAME:$IMAGE_TAG
+    - docker run -d --env-file .env --name caimax_client -p 80:3000 --restart unless-stopped $IMAGE_NAME:$IMAGE_TAG
+  only:
+    - main
