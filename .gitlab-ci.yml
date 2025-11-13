@@ -8,9 +8,6 @@ variables:
   EC2_HOST: "YOUR_EC2_PUBLIC_IP"
   DOCKER_HUB_USERNAME: "joshuamumo"
 
-default:
-  tags:
-    - caimax-production
 
 build_and_push_docker_image:
   stage: dockerize
