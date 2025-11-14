@@ -32,27 +32,23 @@ deploy_ec2:
     - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
   script:
-    - |
-      ssh -t -i ~/.ssh/id_rsa ubuntu@$EC2_HOST <<EOF
-        set -e
-
-        echo "Logging into Docker..."
-        echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
-
-        echo "Stopping old container..."
-        docker stop caimax_client || true
-        docker rm caimax_client || true
-        docker image prune -f
-
-        echo "Creating .env..."
-        printenv | grep -E 'GOOGLE_|NEXT_|DATABASE_|MAPBOX_|AWS_|RESEND_|AGENT_|SEND_' > .env
-
-        echo "Pulling latest image..."
-        docker pull $IMAGE_NAME:$IMAGE_TAG
-
-        echo "Running container..."
-        docker run -d --env-file .env --name caimax_client -p 80:3000 --restart unless-stopped $IMAGE_NAME:$IMAGE_TAG
-      EOF
+    - >
+      ssh -t -i ~/.ssh/id_rsa ubuntu@$EC2_HOST "
+      set -e;
+      echo 'Logging into Docker...';
+      echo '$DOCKER_HUB_TOKEN' | docker login -u '$DOCKER_HUB_USERNAME' --password-stdin;
+      echo 'Stopping old container...';
+      docker stop caimax_client 2>/dev/null || true;
+      docker rm caimax_client 2>/dev/null || true;
+      docker image prune -f;
+      echo 'Creating .env...';
+      printenv | grep -E 'GOOGLE_|NEXT_|DATABASE_|MAPBOX_|AWS_|RESEND_|AGENT_|SEND_' > .env;
+      echo 'Pulling latest image...';
+      docker pull $IMAGE_NAME:$IMAGE_TAG;
+      echo 'Running container...';
+      docker run -d --env-file .env --name caimax_client -p 80:3000 --restart unless-stopped $IMAGE_NAME:$IMAGE_TAG;
+      true
+      "
 
   only:
     - main
