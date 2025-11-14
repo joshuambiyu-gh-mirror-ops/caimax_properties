@@ -8,7 +8,6 @@ variables:
   EC2_HOST: "ec2-13-61-19-214.eu-north-1.compute.amazonaws.com"
   DOCKER_HUB_USERNAME: "joshuamumo"
 
-
 build_and_push_docker_image:
   stage: dockerize
   image: docker:latest
@@ -31,16 +30,29 @@ deploy_ec2:
     - echo "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
     - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
   script:
-    - ssh -i ~/.ssh/id_rsa ubuntu@$EC2_HOST bash << 'EOF'
-        echo "Logging into Docker"
+    - |
+      ssh -i ~/.ssh/id_rsa ubuntu@$EC2_HOST << 'EOF'
+        set -e
+
+        echo "Logging into Docker..."
         echo "$DOCKER_HUB_TOKEN" | docker login -u "joshuamumo" --password-stdin
+
+        echo "Stopping old container..."
         docker stop caimax_client || true
         docker rm caimax_client || true
         docker image prune -f
+
+        echo "Creating .env..."
         printenv | grep -E 'GOOGLE_|NEXT_|DATABASE_|MAPBOX_|AWS_|RESEND_|AGENT_|SEND_' > .env
-        docker pull $IMAGE_NAME:$IMAGE_TAG
-        docker run -d --env-file .env --name caimax_client -p 80:3000 --restart unless-stopped $IMAGE_NAME:$IMAGE_TAG
+
+        echo "Pulling latest image..."
+        docker pull joshuamumo/caimax_client:latest
+
+        echo "Running container..."
+        docker run -d --env-file .env --name caimax_client -p 80:3000 --restart unless-stopped joshuamumo/caimax_client:latest
       EOF
+
   only:
     - main
