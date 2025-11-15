@@ -37,13 +37,13 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
 
   // Extract unique towns and property types from listings
   const [selectedItem, setSelectedItem] = useState<string>(inputValue || 'All');
-  
+
   // Get unique towns and property types from listings
-  const uniqueTowns = Array.from(new Set(items.map(item => 
+  const uniqueTowns = Array.from(new Set(items.map(item =>
     item.location?.split(',')[0]?.trim()
   ).filter(Boolean)));
-  
-  const uniqueTypes = Array.from(new Set(items.map(item => 
+
+  const uniqueTypes = Array.from(new Set(items.map(item =>
     item.propertyType
   ).filter(Boolean)));
 
@@ -85,7 +85,7 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
     });
   }
 
-  
+
 
   async function loadMore() {
     if (loading || !hasMore) return;
@@ -182,7 +182,7 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
             <MapFilters filters={mapFilters} onChange={setMapFilters} />
           </div>
           <div className="sticky top-4 overflow-hidden rounded-lg border border-gray-100 shadow-sm bg-white/80 h-[calc(100vh-10rem)]">
-              <ListingsMap listings={filteredListings} search={inputValue} />
+            <ListingsMap listings={filteredListings} search={inputValue} />
           </div>
         </div>
       </div>
