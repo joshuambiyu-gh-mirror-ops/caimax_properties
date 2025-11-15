@@ -12,15 +12,22 @@ export const Ribbon: React.FC<RibbonProps> = ({ items, selected }) => (
       style={{ scrollBehavior: 'smooth' }}
       id="ribbon-scroll"
     >
-      {items.map((item) => (
-        <button
-          key={item.label}
-          onClick={item.onClick}
-          className={`whitespace-nowrap px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium shadow-sm transition-colors duration-200 border border-gray-200 bg-gray-100 text-gray-700 hover:bg-red-600 hover:text-white ${item.label === selected ? 'bg-red-600 text-white' : ''}`}
-        >
-          {item.label}
-        </button>
-      ))}
+      {items.map((item) => {
+        const isSelected = item.label === selected;
+        const base = "whitespace-nowrap px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium shadow-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1";
+        const selectedCls = "bg-red-600 text-white border-transparent";
+        const normalCls = "bg-black text-white border-transparent hover:bg-gray-800";
+        return (
+          <button
+            key={item.label}
+            onClick={item.onClick}
+            className={`${base} ${isSelected ? selectedCls : normalCls}`}
+            aria-pressed={isSelected}
+          >
+            {item.label}
+          </button>
+        );
+      })}
     </div>
     <button
       aria-label="Scroll right"
