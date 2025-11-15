@@ -132,12 +132,12 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white to-gray-200 min-h-screen w-full max-w-none m-0 p-0 overflow-hidden">
       {/* Fixed header with search and ribbon */}
-      <div className="col-span-1 lg:col-span-5 px-4 pt-6 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto">
+      <div className="col-span-1 lg:col-span-5 px-0 pt-0 pb-0 sticky top-0 z-10 bg-white shadow-sm">
+        <div className="max-w-full mx-0">
           {/* Keep the global Header (app layout) as the main navbar. Render only the Ribbon here so
               the search input in the header (global) will control the pathname and ListingsSearchLayout
               picks it up via usePathname/local state. */}
-          <div className="bg-transparent px-0 py-2">
+          <div className="bg-white px-0 py-0">
             <Ribbon
               items={allItems.map((label) => ({
                 label,

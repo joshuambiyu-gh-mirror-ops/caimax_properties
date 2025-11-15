@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { FunnelIcon } from "@heroicons/react/24/solid";
 
 export type Filters = {
   propertyType?: string;
@@ -34,13 +35,16 @@ export default function MapFilters({ filters, onChange, compact = true }: MapFil
   }
 
   return (
-    <div className={`bg-white rounded-lg border border-gray-100 shadow-sm ${compact ? 'p-2' : 'p-4'}`}>
+    <div className={`bg-gradient-to-br from-slate-50 to-gray-100 rounded-lg border border-gray-200 shadow-md ${compact ? 'p-3' : 'p-4'}`}>
       <div className="flex items-center justify-between">
-        <h3 className={`font-medium ${compact ? 'text-sm' : 'text-lg'}`}>Filters</h3>
+        <div className="flex items-center gap-2">
+          <FunnelIcon className="h-5 w-5 text-red-600" />
+          <h3 className={`font-semibold text-gray-800 ${compact ? 'text-sm' : 'text-lg'}`}>Filters</h3>
+        </div>
         <button
           aria-label={collapsed ? 'Expand filters' : 'Collapse filters'}
           onClick={() => setCollapsed(v => !v)}
-          className="text-xs text-gray-500 px-2 py-1"
+          className="text-xs text-gray-600 hover:text-red-600 transition-colors px-2 py-1 font-medium"
         >{collapsed ? 'Expand' : 'Collapse'}</button>
       </div>
 
