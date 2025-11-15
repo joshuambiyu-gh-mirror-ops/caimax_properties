@@ -11,12 +11,13 @@ export default function HeaderAuth() {
     return <div className="text-gray-500">Loading...</div>;
   }
 
-  if (!session) {
+    if (!session) {
     return (
       <Popover>
         <PopoverTrigger asChild>
           <div>
-            <MagicButton title="Sign in" otherClasses="w-40" />
+            {/* compact on xs, full label on sm+ */}
+            <MagicButton title="Sign in" compact otherClasses="sm:w-40" />
           </div>
         </PopoverTrigger>
         <PopoverContent className="flex flex-col items-center gap-4">

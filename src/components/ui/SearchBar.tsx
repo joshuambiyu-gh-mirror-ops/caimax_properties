@@ -48,7 +48,7 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
         <Search className="absolute left-3 h-5 w-5 text-white transition-opacity duration-300 group-hover:opacity-80" aria-hidden="true" />
         <Input
           type="search"
-          placeholder="Search locations or property types..."
+          placeholder="Search for property"
           value={internalValue}
           onChange={handleInputChange}
           className="flex-1 pl-10 pr-4 border-0 bg-transparent text-white placeholder:text-white/70 focus-visible:ring-0 focus-visible:ring-offset-0 transition-shadow duration-300"

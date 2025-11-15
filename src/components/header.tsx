@@ -78,23 +78,24 @@ export default function Header() {
       <SparklesCore count={18} particleColor="#FFFFFF" />
 
       {/* Brand */}
-      <div className="flex items-center gap-2 relative z-10">
+      <div className="flex items-center gap-2 relative z-10 flex-shrink-0">
         <div>
-          <Image src="/caimax_logo.jpg" alt="Caimax Properties Logo" width={50} height={50} /> {/* Insert logo image */}
+          <Image src="/caimax_logo.jpg" alt="Caimax Properties Logo" width={40} height={40} />
         </div>
-        <div className="flex flex-col text-sm md:text-lg hover:shadow-red-500/50 transition-shadow duration-300 relative z-10">
-          <Link href="/" className="font-bold text-white hover:text-red-500 relative z-20">
-            Caimax Properties
+        {/* compact brand text on xs (truncated), full on sm+; keeps glow divider */}
+        <div className="flex flex-col text-xs sm:text-sm md:text-lg hover:shadow-red-500/50 transition-shadow duration-300 relative z-10 max-w-[140px] sm:max-w-none">
+          <Link href="/" className="font-bold text-white hover:text-red-500 relative z-20 truncate block">
+            <span className="block leading-tight">Caimax</span>
+            <span className="block leading-tight text-[0.9em] sm:text-[1em]">Properties</span>
           </Link>
 
-          {/* Visible divider under the brand. Made slightly taller and a bit more opaque so it shows on the dark gradient. */}
-          <div className="mt-1 h-[2px] w-full bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent z-20" />
+          <div className="mt-1 h-[2px] sm:h-[2px] w-full bg-gradient-to-r from-transparent via-cyan-400/90 to-transparent z-20" />
         </div>
       </div>
 
       {/* Center Content (Search) */}
-      <div className="flex-1 flex justify-center px-4 relative z-10">
-        <div className="w-full max-w-2xl">
+      <div className="flex-1 flex justify-center px-2 relative z-10">
+        <div className="w-full max-w-none sm:max-w-2xl">
           <SearchBar />
         </div>
       </div>
