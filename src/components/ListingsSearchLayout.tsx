@@ -132,12 +132,12 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white to-gray-200 min-h-screen w-full max-w-none m-0 p-0 overflow-hidden">
       {/* Fixed header with search and ribbon */}
-      <div className="col-span-1 lg:col-span-5 px-0 pt-0 pb-0 sticky top-0 z-10 bg-white shadow-sm">
+      <div className="col-span-1 lg:col-span-5 px-0 pt-0 pb-0 sticky top-0 z-10 bg-transparent">
         <div className="max-w-full mx-0">
           {/* Keep the global Header (app layout) as the main navbar. Render only the Ribbon here so
               the search input in the header (global) will control the pathname and ListingsSearchLayout
               picks it up via usePathname/local state. */}
-          <div className="bg-white px-0 py-0">
+          <div className="bg-transparent px-0 py-0">
             <Ribbon
               items={allItems.map((label) => ({
                 label,
@@ -152,8 +152,8 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
         </div>
       </div>
       {/* Scrollable left column */}
-      <div className="col-span-1 lg:col-span-3 w-full overflow-y-auto h-[calc(100vh-6rem)]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full justify-items-start">
+      <div className="col-span-1 lg:col-span-3 w-full overflow-y-auto h-[calc(100vh-6rem)] bg-transparent">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full justify-items-start p-4">
           {filteredListings.map((listing) => (
             <div key={listing.id} className="mb-8 w-full max-w-[384px] mx-auto">
               <Carousel listing={listing} autoSlide={true} autoSlideInterval={5000} />
@@ -176,12 +176,12 @@ export default function ListingsSearchLayout({ listings, initialSearch = "", ini
         </div>
       </div>
       {/* Scrollable right column */}
-      <div className="hidden lg:block lg:col-span-2 w-full h-[calc(100vh-6rem)] overflow-y-auto">
+      <div className="hidden lg:block lg:col-span-2 w-full h-[calc(100vh-6rem)] overflow-y-auto bg-transparent">
         <div className="p-4 space-y-4">
-          <div className="rounded-lg border border-gray-100 shadow-sm p-4 bg-white">
+          <div className="rounded-lg border border-gray-100 shadow-sm p-4 bg-transparent backdrop-blur-sm">
             <MapFilters filters={mapFilters} onChange={setMapFilters} />
           </div>
-          <div className="sticky top-4 overflow-hidden rounded-lg border border-gray-100 shadow-sm bg-white h-[calc(100vh-10rem)]">
+          <div className="sticky top-4 overflow-hidden rounded-lg border border-gray-100 shadow-sm bg-white/80 h-[calc(100vh-10rem)]">
               <ListingsMap listings={filteredListings} search={inputValue} />
           </div>
         </div>
