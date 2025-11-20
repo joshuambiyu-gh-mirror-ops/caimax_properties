@@ -102,3 +102,8 @@ body {
   transition: none !important;
   transform: none !important;
 }
+
+/* Centralized responsive horizontal padding utility for page content
+   Use the `.content-padding` class on top-level layout containers to
+   ensure consistent left/right spacing across small devices. */
+/* Removed page-specific utility — show page uses a scoped module instead. */

@@ -58,9 +58,9 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
   }, [currentIndex]);
 
   return (
-    <div className="space-y-4">
+    <div className="w-full space-y-4">
       {/* Main Gallery */}
-      <div className="shadow-md rounded-lg relative aspect-[16/9] sm:aspect-[16/9] md:aspect-[4/3] cursor-pointer hover:shadow-red-500/50 group max-h-[48vh] sm:max-h-none overflow-hidden">
+      <div className="shadow-md rounded-lg relative aspect-[4/3] sm:aspect-[16/9] md:aspect-[16/9] cursor-pointer group max-h-[70vh] overflow-hidden">
         <div className="relative w-full rounded-lg h-full hover:translate-z-60 transition-transform transition-duration-300" onClick={() => setShowFullscreen(true)}>
           <Image
             src={images[currentIndex]}
@@ -116,14 +116,14 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
       {/* Thumbnail Strip */}
       <div 
         ref={thumbnailsRef}
-        className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent max-w-full px-2 sm:px-4"
+        className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent max-w-full px-0"
       >
         {images.map((image, index) => (
           <motion.button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className={cn(
-              "relative flex-shrink-0 w-16 h-12 sm:w-24 sm:h-16 rounded overflow-hidden",
+              className={cn(
+              "relative flex-shrink-0 w-20 h-12 sm:w-28 sm:h-18 rounded overflow-hidden",
               currentIndex === index && "ring-2 ring-blue-500"
             )}
             whileHover={{ scale: 1.05 }}

@@ -403,6 +403,13 @@ export default function MapboxListingMap({ lat, lng, listingId, headerOffset = 0
           style={{ width: '100%', height: '100%' }}
           mapStyle="mapbox://styles/mapbox/streets-v12"
           mapboxAccessToken={MAPBOX_TOKEN}
+          // Re-enable interactive gestures so touch swipes pan/zoom the map
+          // This restores the map navigation behavior you had before.
+          dragPan={true}
+          scrollZoom={true}
+          doubleClickZoom={true}
+          touchZoomRotate={true}
+          keyboard={true}
         >
           {/* Main property marker */}
           <Marker

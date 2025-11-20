@@ -43,7 +43,7 @@ export default function Carousel({
       {isNavigating && <LoadingSpinner />}
 
       {/* Unified card */}
-      <div className="max-w-sm mx-auto shadow-lg rounded-lg overflow-hidden transition-all duration-300 bg-white">
+      <div className="w-full rounded-lg overflow-hidden bg-white transform transition-transform duration-300 hover:scale-105 hover:shadow-xl hover:shadow-red-500/20">
         {/* Image area */}
         <div className="relative w-full aspect-[3/4] h-[400px] bg-gray-100">
           <div className="flex h-full transition-transform ease-out duration-500" style={{ transform: `translateX(-${curr * 100}%)` }}>

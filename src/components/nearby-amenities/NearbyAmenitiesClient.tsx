@@ -42,19 +42,14 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
   };
 
   return (
-    <div className="px-3 py-2 bg-white/95 rounded-t-lg shadow-md border-t border-gray-100">
+      <div className="px-3 py-2 bg-white/95 rounded-t-lg shadow-md border-t border-gray-100">
       <h4 className="text-sm sm:text-base font-medium mb-2">Nearby Places</h4>
       {amenities.length === 0 ? (
         <p className="text-xs sm:text-sm text-gray-500">No nearby amenities recorded.</p>
       ) : (
-        <div className="relative isolate overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none z-10">
-            <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white/90 to-transparent" />
-            <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white/90 to-transparent" />
-          </div>
-
-          {/* On mobile allow wrapping to multiple rows; on sm+ keep horizontal scroll */}
-          <ul className="flex flex-wrap gap-2 pb-2 snap-x snap-mandatory scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 sm:flex-nowrap sm:overflow-x-auto">
+        <div className="relative">
+          {/* Inline pill-like cards that wrap to next row when they can't fit */}
+          <ul className="flex flex-wrap gap-2 pb-2">
             {amenities.map((a) => (
               <li key={a.id} className="flex-none mb-2 sm:mb-0">
                 <button
@@ -70,7 +65,7 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
                       handleClick(a);
                     }
                   }}
-                  className="snap-center min-w-[110px] sm:min-w-[140px] bg-white backdrop-blur-sm rounded-lg p-2 ring-1 ring-black/5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 group touch-pan-x transition-all duration-150 scale-100 hover:scale-105 active:scale-95 origin-center"
+                  className="snap-center min-w-[140px] sm:min-w-[180px] bg-white backdrop-blur-sm rounded-lg px-3 py-2 ring-1 ring-black/5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 group touch-auto transition-all duration-150 scale-100 hover:scale-105 active:scale-95 origin-center text-left"
                   type="button"
                   style={{ willChange: 'transform' }}
                 >

@@ -40,12 +40,12 @@ export default function MapSection({
   return (
     <Card className="w-full overflow-hidden shadow-lg p-0 rounded-none sm:rounded-xl border-0 flex flex-col">
       <div className="relative w-full flex-1">
-        <div ref={headerRef} className="absolute top-0 left-0 right-0 z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-3 sm:p-4 bg-transparent">
+        <div ref={headerRef} className="absolute top-0 left-0 right-0 z-10 flex flex-row flex-wrap items-center justify-between gap-2 p-2 sm:p-4 bg-transparent">
           <motion.h2 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-lg sm:text-xl font-bold text-white drop-shadow-lg"
+            className="text-lg sm:text-xl font-bold text-white drop-shadow-lg truncate max-w-[65%] sm:max-w-none"
             style={{
               textShadow: '0 0 20px rgba(59, 130, 246, 0.8), 0 0 40px rgba(59, 130, 246, 0.4), 0 2px 4px rgba(0, 0, 0, 0.8)'
             }}
@@ -60,7 +60,7 @@ export default function MapSection({
             <Button
               variant="default"
               size="sm"
-              className="font-bold w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-xl hover:shadow-2xl transition-all border border-blue-500"
+              className="font-bold w-auto text-xs sm:text-sm px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white shadow-xl hover:shadow-2xl transition-all border border-blue-500"
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('caimax:resetMapView'));
               }}
