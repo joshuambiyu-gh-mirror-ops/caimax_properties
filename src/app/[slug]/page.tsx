@@ -33,7 +33,7 @@ import styles from './show-page.module.css';
 interface PageProps {
   // Next's generated types may expect `params` to be a promise-like value or undefined.
   // Use the promise form to satisfy the generated constraint while keeping runtime
-  // code that `await`s params working correctly.
+  // code that await`s params working correctly.
   params?: Promise<{ slug: string }> | undefined;
 }
 
