@@ -20,12 +20,12 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const thumbnailsRef = useRef<HTMLDivElement>(null);
 
-  const next = useCallback(() => 
+  const next = useCallback(() =>
     setCurrentIndex((i) => (i + 1) % images.length),
     [images.length]
   );
 
-  const prev = useCallback(() => 
+  const prev = useCallback(() =>
     setCurrentIndex((i) => (i - 1 + images.length) % images.length),
     [images.length]
   );
@@ -33,7 +33,7 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
   // Keyboard navigation
   useEffect(() => {
     if (!showFullscreen) return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') next();
       if (e.key === 'ArrowLeft') prev();
@@ -114,7 +114,7 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
       </div>
 
       {/* Thumbnail Strip */}
-      <div 
+      <div
         ref={thumbnailsRef}
         className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent max-w-full px-0"
       >
@@ -122,7 +122,7 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
           <motion.button
             key={index}
             onClick={() => setCurrentIndex(index)}
-              className={cn(
+            className={cn(
               "relative flex-shrink-0 w-20 h-12 sm:w-28 sm:h-18 rounded overflow-hidden",
               currentIndex === index && "ring-2 ring-blue-500"
             )}
@@ -148,7 +148,7 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
       <Dialog open={showFullscreen} onOpenChange={setShowFullscreen}>
         <DialogContent className="max-w-7xl w-full h-[90vh] bg-black border-none p-0">
           <DialogTitle className="sr-only">Property Image Gallery</DialogTitle>
-          
+
           <div className="relative h-full flex items-center justify-center">
             <button
               onClick={() => setShowFullscreen(false)}
@@ -200,7 +200,7 @@ export default function PropertyGallery({ images }: PropertyGalleryProps) {
               <ChevronRight className="w-8 h-8" />
             </button>
 
-            <div 
+            <div
               ref={thumbnailsRef}
               className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 p-2 bg-black/50 rounded-lg overflow-x-auto max-w-[80%]"
             >

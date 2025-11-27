@@ -41,7 +41,7 @@ export default function MapSection({
     <Card className="w-full overflow-hidden shadow-lg p-0 rounded-none sm:rounded-xl border-0 flex flex-col">
       <div className="relative w-full flex-1">
         <div ref={headerRef} className="absolute top-0 left-0 right-0 z-10 flex flex-row flex-wrap items-center justify-between gap-2 p-2 sm:p-4 bg-transparent">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}

@@ -1,13 +1,21 @@
-html, body {
-  scrollbar-width: none; /* Firefox */
+html,
+body {
+  scrollbar-width: none;
+  /* Firefox */
 }
-html::-webkit-scrollbar, body::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari, Opera */
 }
-html, body {
+
+html,
+body {
   overflow-x: hidden !important;
   max-width: 100vw;
 }
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -46,6 +54,7 @@ body {
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
   }
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
@@ -78,6 +87,7 @@ body {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -89,6 +99,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

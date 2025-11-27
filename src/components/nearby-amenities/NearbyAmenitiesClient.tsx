@@ -42,7 +42,7 @@ export default function NearbyAmenitiesClient({ amenities }: { amenities: Amenit
   };
 
   return (
-      <div className="px-3 py-2 bg-white/95 rounded-t-lg shadow-md border-t border-gray-100">
+    <div className="px-3 py-2 bg-white/95 rounded-t-lg shadow-md border-t border-gray-100">
       <h4 className="text-sm sm:text-base font-medium mb-2">Nearby Places</h4>
       {amenities.length === 0 ? (
         <p className="text-xs sm:text-sm text-gray-500">No nearby amenities recorded.</p>
