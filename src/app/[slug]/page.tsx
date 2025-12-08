@@ -54,7 +54,7 @@ async function ListingContent({ slug }: { slug: string }) {
   return (
     <div className="min-h-screen bg-gray-100/80">
       <div className={`${styles.contentPadding} max-w-7xl mx-auto py-8 overflow-x-hidden box-border`}>
-        {/* Header Section with Breadcrumbs */}
+        {/* Header Section with Breadcrumbs to be restructured later*/}
         <div className="mb-8">
           <div className="flex flex-wrap items-center text-sm text-gray-500 mb-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm ring-1 ring-black/5 max-w-full">
             <Link href="/" className="hover:text-gray-900">Home</Link>
